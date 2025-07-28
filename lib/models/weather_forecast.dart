@@ -1,20 +1,43 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'dart:developer'; // Import for log
+import 'dart:developer';
+import 'package:timezone/timezone.dart' as tz;
 
-// Helper function to safely parse DateTime from dynamic (String or Timestamp)
+// A helper function to safely parse a DateTime from various potential data types,
+// and correctly interpret it in the Taipei timezone.
 DateTime _parseDateTimeSafely(dynamic value) {
   if (value == null) {
-    return DateTime.now(); // Default to current time if null
-  } else if (value is Timestamp) {
-    return value.toDate();
-  } else if (value is String) {
-    return DateTime.tryParse(value) ?? DateTime.now(); // Try parsing string, default to now if invalid
+    // If the value is null, return the current time in Taipei as a fallback.
+    return tz.TZDateTime.now(tz.getLocation('Asia/Taipei'));
   }
-  log('WARNING: Unexpected type for DateTime field: ${value.runtimeType}. Value: $value', name: 'WeatherModelDebug');
-  return DateTime.now(); // Fallback for unexpected types
+
+  // Define the Taipei location for timezone conversion.
+  final location = tz.getLocation('Asia/Taipei');
+
+  if (value is Timestamp) {
+    // Firestore Timestamps are timezone-aware (UTC). Convert it to a TZDateTime in Taipei.
+    return tz.TZDateTime.from(value.toDate(), location);
+  }
+
+  if (value is String) {
+    try {
+      // First, parse the string into a standard Dart DateTime object.
+      // This object will internally be in UTC but will remember the offset (+08:00).
+      final parsedDateTime = DateTime.parse(value);
+      // Then, create a TZDateTime from it, correctly interpreting it in the Taipei location.
+      // This ensures that .year, .month, .day will always refer to the Taipei calendar date.
+      return tz.TZDateTime.from(parsedDateTime, location);
+    } catch (e) {
+      // If parsing fails, return the current time in Taipei as a fallback.
+      log('Could not parse date string: $value. Error: $e', name: 'DateTimeParsing');
+      return tz.TZDateTime.now(location);
+    }
+  }
+
+  // As a final fallback, return the current time in Taipei.
+  return tz.TZDateTime.now(location);
 }
 
-// 代表每個鄉鎮文件中的 location 資訊
+
 class LocationData {
   final double latitude;
   final double longitude;
@@ -31,58 +54,34 @@ class LocationData {
   });
 
   factory LocationData.fromMap(Map<String, dynamic> data) {
-    log('LocationData.fromMap - Raw data: $data', name: 'WeatherModelDebug');
-    final latitudeValue = (data['latitude'] as num?)?.toDouble() ?? 0.0;
-    final longitudeValue = (data['longitude'] as num?)?.toDouble() ?? 0.0;
-    final timestampValue = (data['timestamp'] as num?)?.toInt() ?? 0;
-
-    // Logging and safe access for townName
-    if (data['townName'] == null) {
-      log('WARNING: LocationData.fromMap - townName is null in raw data. Using default empty string.', name: 'WeatherModelDebug');
-    }
-    final townNameValue = data['townName'] as String? ?? ''; 
-    
-    final updatedAtValue = _parseDateTimeSafely(data['updatedAt']); // Using helper
-
-    log('LocationData.fromMap - Parsed: latitude=$latitudeValue, longitude=$longitudeValue, timestamp=$timestampValue, townName=$townNameValue, updatedAt=$updatedAtValue', name: 'WeatherModelDebug');
-
     return LocationData(
-      latitude: latitudeValue,
-      longitude: longitudeValue,
-      timestamp: timestampValue,
-      townName: townNameValue,
-      updatedAt: updatedAtValue,
+      latitude: (data['latitude'] as num?)?.toDouble() ?? 0.0,
+      longitude: (data['longitude'] as num?)?.toDouble() ?? 0.0,
+      timestamp: (data['timestamp'] as num?)?.toInt() ?? 0,
+      townName: data['townName'] as String? ?? '',
+      updatedAt: _parseDateTimeSafely(data['updatedAt']),
     );
-  }
-
-  Map<String, dynamic> toMap() {
-    return {
-      'latitude': latitude,
-      'longitude': longitude,
-      'timestamp': timestamp,
-      'townName': townName,
-      'updatedAt': updatedAt.toIso8601String(),
-    };
   }
 }
 
-// 代表每個鄉鎮文件中的 forecasts 陣列中的每個3小時預報項目
-class Forecast {
-  final double? temp; // MODIFIED: Changed to double?
-  final String comfort; // Non-nullable
+class Forecast { // Represents a single hourly forecast item
+  final double? temp;
+  final double? apparentTemperature;
+  final String comfort;
   final DateTime endTime;
-  final String humidity; // Non-nullable
-  final double? maxTemp; // MODIFIED: Changed to double?
-  final double? minTemp; // MODIFIED: Changed to double?
-  final String rainProb; // Non-nullable
+  final String humidity;
+  final double? maxTemp;
+  final double? minTemp;
+  final String rainProb;
   final DateTime startTime;
   final int timestamp;
-  final String weather; // Non-nullable
-  final String windDirection; // Non-nullable
-  final double? windSpeed; // MODIFIED: Changed to double?
+  final String weather;
+  final String windDirection;
+  final double? windSpeed;
 
   Forecast({
     this.temp,
+    this.apparentTemperature,
     required this.comfort,
     required this.endTime,
     required this.humidity,
@@ -97,103 +96,38 @@ class Forecast {
   });
 
   factory Forecast.fromMap(Map<String, dynamic> data) {
-    log('Forecast.fromMap - Raw data: $data', name: 'WeatherModelDebug');
-    final tempValue = (data['Temp'] as num?)?.toDouble(); // MODIFIED: Use .toDouble()
-
-    // Logging and safe access for comfort
-    if (data['comfort'] == null) {
-      log('WARNING: Forecast.fromMap - comfort is null in raw data. Using default empty string.', name: 'WeatherModelDebug');
-    }
-    final comfortValue = data['comfort'] as String? ?? ''; 
-
-    final endTimeValue = _parseDateTimeSafely(data['endTime']); // Using helper for endTime
-
-    // Logging and safe access for humidity
-    if (data['humidity'] == null) {
-      log('WARNING: Forecast.fromMap - humidity is null in raw data. Using default empty string.', name: 'WeatherModelDebug');
-    }
-    final humidityValue = data['humidity'] as String? ?? ''; 
-
-    final maxTempValue = (data['maxTemp'] as num?)?.toDouble(); // MODIFIED: Use .toDouble()
-    final minTempValue = (data['minTemp'] as num?)?.toDouble(); // MODIFIED: Use .toDouble()
-
-    // Logging and safe access for rainProb
-    if (data['rainProb'] == null) {
-      log('WARNING: Forecast.fromMap - rainProb is null in raw data. Using default empty string.', name: 'WeatherModelDebug');
-    }
-    final rainProbValue = data['rainProb'] as String? ?? ''; 
-
-    final startTimeValue = _parseDateTimeSafely(data['startTime']); // Using helper for startTime
-
-    final timestampValue = (data['timestamp'] as num?)?.toInt() ?? 0;
-
-    // Logging and safe access for weather
-    if (data['weather'] == null) {
-      log('WARNING: Forecast.fromMap - weather is null in raw data. Using default empty string.', name: 'WeatherModelDebug');
-    }
-    final weatherValue = data['weather'] as String? ?? ''; 
-
-    // Logging and safe access for windDirection
-    if (data['windDirection'] == null) {
-      log('WARNING: Forecast.fromMap - windDirection is null in raw data. Using default empty string.', name: 'WeatherModelDebug');
-    }
-    final windDirectionValue = data['windDirection'] as String? ?? ''; 
-
-    // Logging and safe access for windSpeed
-    if (data['windSpeed'] == null) {
-      log('WARNING: Forecast.fromMap - windSpeed is null in raw data. Using default 0.', name: 'WeatherModelDebug');
-    }
-    final windSpeedValue = (data['windSpeed'] as num?)?.toDouble() ?? 0.0; // MODIFIED: Use .toDouble() and default 0.0
-
-    log('Forecast.fromMap - Parsed: temp=$tempValue, comfort=$comfortValue, endTime=$endTimeValue, humidity=$humidityValue, maxTemp=$maxTempValue, minTemp=$minTempValue, rainProb=$rainProbValue, startTime=$startTimeValue, timestamp=$timestampValue, weather=$weatherValue, windDirection=$windDirectionValue, windSpeed=$windSpeedValue', name: 'WeatherModelDebug');
-
     return Forecast(
-      temp: tempValue,
-      comfort: comfortValue,
-      endTime: endTimeValue,
-      humidity: humidityValue,
-      maxTemp: maxTempValue,
-      minTemp: minTempValue,
-      rainProb: rainProbValue,
-      startTime: startTimeValue,
-      timestamp: timestampValue,
-      weather: weatherValue,
-      windDirection: windDirectionValue,
-      windSpeed: windSpeedValue,
+      temp: (data['Temp'] as num?)?.toDouble(),
+      apparentTemperature: (data['apparent_temperature'] as num?)?.toDouble(),
+      comfort: data['comfort'] as String? ?? '',
+      endTime: _parseDateTimeSafely(data['endTime']),
+      humidity: data['humidity'] as String? ?? '',
+      maxTemp: (data['maxTemp'] as num?)?.toDouble(),
+      minTemp: (data['minTemp'] as num?)?.toDouble(),
+      rainProb: data['rainProb'] as String? ?? '',
+      startTime: _parseDateTimeSafely(data['startTime']),
+      timestamp: (data['timestamp'] as num?)?.toInt() ?? 0,
+      weather: data['weather'] as String? ?? '',
+      windDirection: data['windDirection'] as String? ?? '',
+      windSpeed: (data['windSpeed'] as num?)?.toDouble() ?? 0.0,
     );
-  }
-
-  Map<String, dynamic> toMap() {
-    return {
-      if (temp != null) 'Temp': temp,
-      'comfort': comfort,
-      'endTime': endTime.toIso8601String(),
-      'humidity': humidity,
-      if (maxTemp != null) 'maxTemp': maxTemp,
-      if (minTemp != null) 'minTemp': minTemp,
-      'rainProb': rainProb,
-      'startTime': startTime.toIso8601String(),
-      'timestamp': timestamp,
-      'weather': weather,
-      'windDirection': windDirection,
-      'windSpeed': windSpeed,
-    };
   }
 }
 
-// 代表 weekly 子集合中 forecasts 陣列的每個項目
-class WeeklyForecastItem {
-  final String comfort; // Non-nullable
+class WeeklyForecastItem { // Represents a single daily forecast item
+  final String comfort;
   final DateTime endTime;
-  final String humidity; // Non-nullable
-  final double? maxTemp; // MODIFIED: Changed to double?
-  final double? minTemp; // MODIFIED: Changed to double?
-  final String? rainProb; // Kept nullable as per user feedback
+  final String humidity;
+  final double? maxTemp;
+  final double? minTemp;
+  final double? maxApparentTemperature;
+  final double? minApparentTemperature;
+  final String? rainProb;
   final DateTime startTime;
   final int timestamp;
-  final String weather; // Non-nullable
-  final String windDirection; // Non-nullable
-  final double? windSpeed; // MODIFIED: Changed to double?
+  final String weather;
+  final String windDirection;
+  final double? windSpeed;
 
   WeeklyForecastItem({
     required this.comfort,
@@ -201,7 +135,9 @@ class WeeklyForecastItem {
     required this.humidity,
     required this.maxTemp,
     required this.minTemp,
-    this.rainProb, // Kept nullable
+    this.maxApparentTemperature,
+    this.minApparentTemperature,
+    this.rainProb,
     required this.startTime,
     required this.timestamp,
     required this.weather,
@@ -210,200 +146,74 @@ class WeeklyForecastItem {
   });
 
   factory WeeklyForecastItem.fromMap(Map<String, dynamic> data) {
-    log('WeeklyForecastItem.fromMap - Raw data: $data', name: 'WeatherModelDebug');
-
-    // Logging and safe access for comfort
-    if (data['comfort'] == null) {
-      log('WARNING: WeeklyForecastItem.fromMap - comfort is null in raw data. Using default empty string.', name: 'WeatherModelDebug');
-    }
-    final comfortValue = data['comfort'] as String? ?? ''; 
-
-    final endTimeValue = _parseDateTimeSafely(data['endTime']); // Using helper for endTime
-
-    // Logging and safe access for humidity
-    if (data['humidity'] == null) {
-      log('WARNING: WeeklyForecastItem.fromMap - humidity is null in raw data. Using default empty string.', name: 'WeatherModelDebug');
-    }
-    final humidityValue = data['humidity'] as String? ?? ''; 
-
-    final maxTempValue = (data['maxTemp'] as num?)?.toDouble(); // MODIFIED: Use .toDouble()
-    final minTempValue = (data['minTemp'] as num?)?.toDouble(); // MODIFIED: Use .toDouble()
-    
-    // rainProb remains nullable in model and handled with ?? '0%'
-    final rainProbValue = data['rainProb'] as String? ?? '0%';
-
-    final startTimeValue = _parseDateTimeSafely(data['startTime']); // Using helper for startTime
-
-    final timestampValue = (data['timestamp'] as num?)?.toInt() ?? 0;
-
-    // Logging and safe access for weather
-    if (data['weather'] == null) {
-      log('WARNING: WeeklyForecastItem.fromMap - weather is null in raw data. Using default empty string.', name: 'WeatherModelDebug');
-    }
-    final weatherValue = data['weather'] as String? ?? ''; 
-
-    // Logging and safe access for windDirection
-    if (data['windDirection'] == null) {
-      log('WARNING: WeeklyForecastItem.fromMap - windDirection is null in raw data. Using default empty string.', name: 'WeatherModelDebug');
-    }
-    final windDirectionValue = data['windDirection'] as String? ?? ''; 
-
-    // Logging and safe access for windSpeed
-    if (data['windSpeed'] == null) {
-      log('WARNING: WeeklyForecastItem.fromMap - windSpeed is null in raw data. Using default 0.', name: 'WeatherModelDebug');
-    }
-    final windSpeedValue = (data['windSpeed'] as num?)?.toDouble() ?? 0.0; // MODIFIED: Use .toDouble() and default 0.0
-
-    log('WeeklyForecastItem.fromMap - Parsed: comfort=$comfortValue, endTime=$endTimeValue, humidity=$humidityValue, maxTemp=$maxTempValue, minTemp=$minTempValue, rainProb=$rainProbValue, startTime=$startTimeValue, timestamp=$timestampValue, weather=$weatherValue, windDirection=$windDirectionValue, windSpeed=$windSpeedValue', name: 'WeatherModelDebug');
-
     return WeeklyForecastItem(
-      comfort: comfortValue,
-      endTime: endTimeValue,
-      humidity: humidityValue,
-      maxTemp: maxTempValue,
-      minTemp: minTempValue,
-      rainProb: rainProbValue,
-      startTime: startTimeValue,
-      timestamp: timestampValue,
-      weather: weatherValue,
-      windDirection: windDirectionValue,
-      windSpeed: windSpeedValue,
+      comfort: data['comfort'] as String? ?? '',
+      endTime: _parseDateTimeSafely(data['endTime']),
+      humidity: data['humidity'] as String? ?? '',
+      maxTemp: (data['maxTemp'] as num?)?.toDouble(),
+      minTemp: (data['minTemp'] as num?)?.toDouble(),
+      maxApparentTemperature: (data['max_apparent_temperature'] as num?)?.toDouble(),
+      minApparentTemperature: (data['min_apparent_temperature'] as num?)?.toDouble(),
+      rainProb: data['rainProb'] as String?,
+      startTime: _parseDateTimeSafely(data['startTime']),
+      timestamp: (data['timestamp'] as num?)?.toInt() ?? 0,
+      weather: data['weather'] as String? ?? '',
+      windDirection: data['windDirection'] as String? ?? '',
+      windSpeed: (data['windSpeed'] as num?)?.toDouble() ?? 0.0,
     );
-  }
-
-  Map<String, dynamic> toMap() {
-    return {
-      'comfort': comfort,
-      'endTime': endTime.toIso8601String(),
-      'humidity': humidity,
-      'maxTemp': maxTemp,
-      'minTemp': minTemp,
-      if (rainProb != null) 'rainProb': rainProb,
-      'startTime': startTime.toIso8601String(),
-      'timestamp': timestamp,
-      'weather': weather,
-      'windDirection': windDirection,
-      'windSpeed': windSpeed,
-    };
   }
 }
 
-// 代表 weekly 子集合中的單一文件
-class WeeklyWeatherForecast {
-  final String id;
-  final String countyName; // Non-nullable
-  final List<WeeklyForecastItem> forecasts;
-  final LocationData location; // MODIFIED: Changed to non-nullable
-  final DateTime updatedAt;
-
-  WeeklyWeatherForecast({
-    required this.id,
-    required this.countyName,
-    required this.forecasts,
-    required this.location, // MODIFIED: Set as required
-    required this.updatedAt,
-  });
-
-  factory WeeklyWeatherForecast.fromDocument(Map<String, dynamic> data, String id) {
-    log('WeeklyWeatherForecast.fromDocument - Raw data for id $id: $data', name: 'WeatherModelDebug');
-    List<WeeklyForecastItem> parsedForecasts = [];
-    if (data['forecasts'] != null) {
-      for (var forecastMap in data['forecasts']) {
-        parsedForecasts.add(WeeklyForecastItem.fromMap(forecastMap as Map<String, dynamic>));
-      }
-    }
-
-    // Logging and safe access for countyName
-    if (data['countyName'] == null) {
-      log('WARNING: WeeklyWeatherForecast.fromDocument - countyName is null in raw data. Using default empty string.', name: 'WeatherModelDebug');
-    }
-    final countyNameValue = data['countyName'] as String? ?? ''; // Safe cast and default
-    
-    // MODIFIED: Always provide a LocationData instance, even if raw data for 'location' is null
-    final locationValue = data['location'] != null 
-        ? LocationData.fromMap(data['location'] as Map<String, dynamic>)
-        : LocationData(latitude: 0.0, longitude: 0.0, timestamp: 0, townName: '', updatedAt: DateTime.now());
-
-    final updatedAtValue = _parseDateTimeSafely(data['updatedAt']); // Using helper for updatedAt
-
-    log('WeeklyWeatherForecast.fromDocument - Parsed: id=$id, countyName=$countyNameValue, location=$locationValue, updatedAt=$updatedAtValue', name: 'WeatherModelDebug');
-
-    return WeeklyWeatherForecast(
-      id: id,
-      countyName: countyNameValue,
-      forecasts: parsedForecasts,
-      location: locationValue, // Will always be non-null now
-      updatedAt: updatedAtValue,
-    );
-  }
-
-  Map<String, dynamic> toMap() {
-    return {
-      'countyName': countyName,
-      'forecasts': forecasts.map((f) => f.toMap()).toList(),
-      'location': location.toMap(), // No longer nullable access here
-      'updatedAt': updatedAt.toIso8601String(),
-    };
-  }
-}
-
-// 代表 weather_forecasts 集合中的每個主要文件 (3小時預報)
+// Main weather forecast model
 class WeatherForecast {
   final String id;
-  final String countyName; // Non-nullable
-  final List<Forecast> forecasts;
-  final LocationData location; // MODIFIED: Changed to non-nullable
+  final String countyName;
+  final LocationData location;
   final DateTime updatedAt;
-  WeeklyWeatherForecast? weeklyForecast;
+  final List<Forecast> hourlyForecasts;
+  final List<WeeklyForecastItem> weeklyForecasts;
 
   WeatherForecast({
     required this.id,
     required this.countyName,
-    required this.forecasts,
-    required this.location, // MODIFIED: Set as required
+    required this.location,
     required this.updatedAt,
-    this.weeklyForecast,
+    required this.hourlyForecasts,
+    required this.weeklyForecasts,
   });
 
   factory WeatherForecast.fromDocument(Map<String, dynamic> data, String id) {
-    log('WeatherForecast.fromDocument - Raw data for id $id: $data', name: 'WeatherModelDebug');
-    List<Forecast> parsedForecasts = [];
-    if (data['forecasts'] != null) {
-      for (var forecastMap in data['forecasts']) {
-        parsedForecasts.add(Forecast.fromMap(forecastMap as Map<String, dynamic>));
+    List<Forecast> parsedHourly = [];
+    if (data['hourly_forecast'] != null && data['hourly_forecast'] is List) {
+      for (var forecastMap in data['hourly_forecast']) {
+        if (forecastMap is Map<String, dynamic>) {
+          parsedHourly.add(Forecast.fromMap(forecastMap));
+        }
       }
     }
 
-    // Logging and safe access for countyName
-    if (data['countyName'] == null) {
-      log('WARNING: WeatherForecast.fromDocument - countyName is null in raw data. Using default empty string.', name: 'WeatherModelDebug');
+    List<WeeklyForecastItem> parsedWeekly = [];
+    if (data['weekly_forecast'] != null && data['weekly_forecast'] is List) {
+      for (var forecastMap in data['weekly_forecast']) {
+        if (forecastMap is Map<String, dynamic>) {
+          parsedWeekly.add(WeeklyForecastItem.fromMap(forecastMap));
+        }
+      }
     }
-    final countyNameValue = data['countyName'] as String? ?? ''; // Safe cast and default
-
-    // MODIFIED: Always provide a LocationData instance, even if raw data for 'location' is null
+    
+    final countyNameValue = data['countyName'] as String? ?? '';
     final locationValue = data['location'] != null 
         ? LocationData.fromMap(data['location'] as Map<String, dynamic>)
         : LocationData(latitude: 0.0, longitude: 0.0, timestamp: 0, townName: '', updatedAt: DateTime.now());
-
-    final updatedAtValue = _parseDateTimeSafely(data['updatedAt']); // Using helper for updatedAt
-
-    log('WeatherForecast.fromDocument - Parsed: id=$id, countyName=$countyNameValue, location=$locationValue, updatedAt=$updatedAtValue', name: 'WeatherModelDebug');
-
+    final updatedAtValue = _parseDateTimeSafely(data['updatedAt']);
+    
     return WeatherForecast(
       id: id,
       countyName: countyNameValue,
-      forecasts: parsedForecasts,
-      location: locationValue, // Will always be non-null now
+      location: locationValue,
       updatedAt: updatedAtValue,
+      hourlyForecasts: parsedHourly,
+      weeklyForecasts: parsedWeekly,
     );
-  }
-
-  Map<String, dynamic> toMap() {
-    return {
-      'countyName': countyName,
-      'forecasts': forecasts.map((f) => f.toMap()).toList(),
-      'location': location.toMap(), // No longer nullable access here
-      'updatedAt': updatedAt.toIso8601String(),
-    };
   }
 }

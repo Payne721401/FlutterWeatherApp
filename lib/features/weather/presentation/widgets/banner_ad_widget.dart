@@ -13,6 +13,7 @@ class BannerAdWidget extends StatefulWidget {
 class _BannerAdWidgetState extends State<BannerAdWidget> {
   BannerAd? _bannerAd;
   bool _bannerAdIsLoaded = false;
+
   bool _isDisposed = false;
   int _retryAttempt = 0; // Added retry counter
   static const int _maxRetries = 3; // Max retry attempts

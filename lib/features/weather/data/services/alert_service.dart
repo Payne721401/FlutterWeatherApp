@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import '../models/weather_data.dart';
+import '../models/weather_alert.dart';
 
 class AlertService {
   final String apiUrl = 'https://alerts.ncdr.nat.gov.tw/JSONAtomFeeds.ashx';
@@ -20,6 +20,7 @@ class AlertService {
               entry['author']['name'] != null &&
               (entry['author']['name'] == '中央氣象署' || entry['author']['name'] == '水利署')) {
             try {
+              // Now this correctly uses the factory from the new WeatherAlert model
               alerts.add(WeatherAlert.fromJson(entry));
             } catch (e) {
               print('Error parsing alert entry: $e');

@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
-import '../../data/models/weather_data.dart';
 import 'weather_card.dart';
+// MODIFICATION: Removed dependency on weather_data.dart
+// import '../../data/models/weather_data.dart';
 
 class AiSummaryCard extends StatelessWidget {
-  final WeatherInfo data;
+  // MODIFICATION: Changed to directly receive aiSummary as a nullable String
+  final String? aiSummary;
 
-  const AiSummaryCard({super.key, required this.data});
+  const AiSummaryCard({super.key, this.aiSummary});
 
   @override
   Widget build(BuildContext context) {
@@ -25,7 +27,8 @@ class AiSummaryCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  data.aiSummary, // AI Text
+                  // MODIFICATION: Use the directly passed aiSummary, with a fallback text
+                  aiSummary ?? '這裡將顯示來自 AI 助手的摘要。請輸入提示以獲取天氣分析。', 
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.grey[800]),
                 ),
               ],

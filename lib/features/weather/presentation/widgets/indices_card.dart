@@ -1,54 +1,97 @@
 import 'package:flutter/material.dart';
-import '../../data/models/weather_data.dart';
 import 'weather_card.dart';
 import 'horizontal_bar_chart.dart';
-import 'clothing_advice_dialog.dart'; // Import clothing advice dialog
-import 'drying_index_dialog.dart'; // Import drying index dialog
-import 'outdoor_sports_dialog.dart'; // Import outdoor sports dialog
-import '../utils/clothing_advice_utils.dart'; // Import the new clothing utility file
-import '../utils/drying_advice_utils.dart'; // Import the new drying utility file
-import '../utils/exercise_advice_utils.dart'; // Import the new exercise utility file
+import 'clothing_advice_dialog.dart';
+import 'drying_index_dialog.dart';
+import 'outdoor_sports_dialog.dart';
+import '../utils/clothing_advice_utils.dart';
+import '../utils/drying_advice_utils.dart';
+import '../utils/exercise_advice_utils.dart';
+
+// 1. Define the new, independent data class.
+// This class is self-contained and has no external dependencies.
+class IndicesCardDialogData {
+  final double temperature;
+  final double feelsLike;
+  final double tempHigh;
+  final double tempLow;
+  final int humidity;
+  final int precipitationChance;
+  final int aqi;
+  final int uvIndex;
+  final double windSpeed;
+
+  IndicesCardDialogData({
+    required this.temperature,
+    required this.feelsLike,
+    required this.tempHigh,
+    required this.tempLow,
+    required this.humidity,
+    required this.precipitationChance,
+    required this.aqi,
+    required this.uvIndex,
+    required this.windSpeed,
+  });
+}
 
 class IndicesCard extends StatelessWidget {
-  final WeatherInfo data;
+  final double? temperature;
+  final double? feelsLike;
+  final double? tempHigh;
+  final double? tempLow;
+  final int? humidity;
+  final int? precipitationChance;
+  final int? aqi;
+  final int? uvIndex;
+  final double? windSpeed;
 
-  const IndicesCard({super.key, required this.data});
+  const IndicesCard({
+    super.key,
+    this.temperature,
+    this.feelsLike,
+    this.tempHigh,
+    this.tempLow,
+    this.humidity,
+    this.precipitationChance,
+    this.aqi,
+    this.uvIndex,
+    this.windSpeed,
+  });
 
   // Helper for Advice Items
   Widget _buildAdviceItem(BuildContext context, IconData icon, String title, String advice, int value, int maxValue, VoidCallback onTap) {
-    // Determine color for the small bar based on suitability (green to red gradient concept)
      final suitabilityColors = [Colors.green, Colors.greenAccent, Colors.yellow, Colors.orange, Colors.red];
      final percentage = value / maxValue;
      Color itemBarColor = _getColorForSuitability(percentage, suitabilityColors);
 
-    return Expanded( // Use Expanded to distribute space evenly
-      child: InkWell( // Make the item tappable
-        onTap: onTap, // Call the provided onTap function
-        borderRadius: BorderRadius.circular(10.0), // Add a subtle ripple effect
+    return Expanded(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10.0),
         child: Padding(
-          padding: const EdgeInsets.all(8.0), // Add some padding for better tapping area
+          padding: const EdgeInsets.all(8.0),
           child: Column(
             children: [
-              CircleAvatar( // Circle background for icon
+              CircleAvatar(
                 radius: 22,
                 backgroundColor: Theme.of(context).primaryColor.withAlpha((255 * 0.1).round()),
                 child: Icon(icon, size: 24, color: Theme.of(context).primaryColor),
               ),
               const SizedBox(height: 8),
-              Text(title, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey[700]), textAlign: TextAlign.center), // Center align title
+              Text(title, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey[700]), textAlign: TextAlign.center),
               const SizedBox(height: 2),
-              Text(advice, style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold), textAlign: TextAlign.center), // Center align advice
-              const SizedBox(height: 4), // Space between advice text and chart
+              Text(advice, style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+              const SizedBox(height: 4),
               HorizontalBarChart(
                 value: value.toDouble(),
                 maxValue: maxValue.toDouble(),
-                barColor: itemBarColor, // Use the calculated suitability color
-                width: 60, // Adjust width as needed
+                barColor: itemBarColor,
+                width: 60,
               ),
                Text(
-                 '($value/$maxValue)', // Display numerical value
+                 '($value/$maxValue)',
                  style: TextStyle(fontSize: 10, color: Colors.grey[600])
-               ), // Display numerical value
+               ),
             ],
           ),
         ),
@@ -56,116 +99,81 @@ class IndicesCard extends StatelessWidget {
     );
   }
 
-   // Helper to get color based on suitability percentage (green to red)
    Color _getColorForSuitability(double percentage, List<Color> colors) {
      if (percentage <= 0.0) return colors.first;
      if (percentage >= 1.0) return colors.last;
-
      final section = 1.0 / (colors.length - 1);
-     int startIndex = (percentage / section).floor();
-     int endIndex = (percentage / section).ceil();
-
-     startIndex = startIndex.clamp(0, colors.length - 1);
-     endIndex = endIndex.clamp(0, colors.length - 1);
-
-     if (startIndex == endIndex) {
-       return colors[startIndex];
-     }
-
+     int startIndex = (percentage / section).floor().clamp(0, colors.length - 1);
+     int endIndex = (percentage / section).ceil().clamp(0, colors.length - 1);
+     if (startIndex == endIndex) return colors[startIndex];
      final sectionPercentage = (percentage - startIndex * section) / section;
-
      return Color.lerp(colors[startIndex], colors[endIndex], sectionPercentage)!;
    }
 
-
   @override
   Widget build(BuildContext context) {
-    // Assuming max values for indices are 5 (adjust as needed)
     const int maxIndexValue = 5;
 
-    // Calculate clothing advice based on the new logic
-    final tempDifference = (data.tempHigh - data.tempLow).abs();
-    final outfitSuggestion = generateOutfitSuggestion(data.feelsLike.toDouble(), tempDifference.toDouble());
-    final clothingIndexValue = getClothingIndexValue(outfitSuggestion);
+    // Use null-coalescing for safety.
+    final currentFeelsLike = feelsLike ?? 0.0;
+    final currentTempHigh = tempHigh ?? 0.0;
+    final currentTempLow = tempLow ?? 0.0;
+    final currentTemperature = temperature ?? 0.0;
+    final currentHumidity = humidity ?? 0;
+    final currentPrecipitationChance = precipitationChance ?? 0;
+    final currentWindSpeed = windSpeed ?? 0.0;
+    final currentAqi = aqi ?? 0;
+    final currentUvIndex = uvIndex ?? 0;
 
-    // Calculate drying advice based on the new logic
+    // Calculate advice values
+    final tempDifference = (currentTempHigh - currentTempLow).abs();
+    final outfitSuggestion = generateOutfitSuggestion(currentFeelsLike, tempDifference);
+    final clothingIndexValue = getClothingIndexValue(outfitSuggestion);
     final dryingSuggestion = getDryingSuggestion(
-      temp: data.temperature.toDouble(),
-      humidity: data.humidity.toDouble(),
-      rainProb: data.precipitationChance.toDouble(),
+      temp: currentTemperature,
+      humidity: currentHumidity.toDouble(),
+      rainProb: currentPrecipitationChance.toDouble(),
     );
     final dryingIndexValue = getDryingIndexValue(dryingSuggestion);
-
-    // Calculate exercise advice based on the new logic
     final exerciseSuggestion = getExerciseSuggestion(
-      temp: data.feelsLike.toDouble(),
-      windLevel: data.windSpeed.toDouble(),
-      aqi: data.aqi,
-      rainProb: data.precipitationChance.toDouble(),
-      uvIndex: data.uvIndex,
+      temp: currentFeelsLike,
+      windLevel: currentWindSpeed,
+      aqi: currentAqi,
+      rainProb: currentPrecipitationChance.toDouble(),
+      uvIndex: currentUvIndex,
     );
     final exerciseIndexValue = getExerciseIndexValue(exerciseSuggestion);
+    
+    // 2. Create an instance of the new data class.
+    // This object is what will be passed to the dialogs.
+    final dialogData = IndicesCardDialogData(
+      temperature: currentTemperature,
+      feelsLike: currentFeelsLike,
+      tempHigh: currentTempHigh,
+      tempLow: currentTempLow,
+      humidity: currentHumidity,
+      precipitationChance: currentPrecipitationChance,
+      aqi: currentAqi,
+      uvIndex: currentUvIndex,
+      windSpeed: currentWindSpeed,
+    );
 
     return WeatherCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Advice Row with numerical values and charts
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
-            crossAxisAlignment: CrossAxisAlignment.start, // Align items at the top
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildAdviceItem(
-                context,
-                Icons.checkroom,
-                '穿搭建議',
-                outfitSuggestion, // Display the outfit suggestion directly
-                clothingIndexValue, // Use the new clothing index value
-                maxIndexValue,
-                 () {
-                   showDialog(
-                     context: context,
-                     builder: (BuildContext context) {
-                       return ClothingAdviceDialog(data: data);
-                     },
-                   );
-                 },
-              ),
-              _buildAdviceItem(
-                context,
-                Icons.wb_sunny_outlined,
-                '曬衣建議',
-                dryingSuggestion, // Use the new drying suggestion
-                dryingIndexValue, // Use the new drying index value
-                maxIndexValue,
-                 () {
-                   showDialog(
-                     context: context,
-                     builder: (BuildContext context) {
-                       return DryingIndexDialog(data: data);
-                     },
-                   );
-                 },
-              ),
-              _buildAdviceItem(
-                context,
-                Icons.directions_run,
-                '戶外運動',
-                exerciseSuggestion, // Use the new exercise suggestion
-                exerciseIndexValue, // Use the new exercise index value
-                maxIndexValue,
-                 () {
-                   showDialog(
-                     context: context,
-                     builder: (BuildContext context) {
-                       return OutdoorSportsDialog(data: data);
-                     },
-                   );
-                 },
-              ),
+              _buildAdviceItem(context, Icons.checkroom, '穿搭建議', outfitSuggestion, clothingIndexValue, maxIndexValue,
+                 () => showDialog(context: context, builder: (_) => ClothingAdviceDialog(data: dialogData))),
+              _buildAdviceItem(context, Icons.wb_sunny_outlined, '曬衣建議', dryingSuggestion, dryingIndexValue, maxIndexValue,
+                 () => showDialog(context: context, builder: (_) => DryingIndexDialog(data: dialogData))),
+              _buildAdviceItem(context, Icons.directions_run, '戶外運動', exerciseSuggestion, exerciseIndexValue, maxIndexValue,
+                 () => showDialog(context: context, builder: (_) => OutdoorSportsDialog(data: dialogData))),
             ]
           ),
-          // Removed Placeholder for Directional Bar Chart
         ],
       )
     );

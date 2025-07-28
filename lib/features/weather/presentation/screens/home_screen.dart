@@ -1,130 +1,115 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import 'package:intl/intl.dart'; // Import DateFormat
-import '../../data/models/weather_data.dart';
-import '../state/weather_state.dart';
-// Import existing and new widgets
-import '../widgets/search_bar_widget.dart';
-import '../widgets/suggestions_list.dart';
-import '../widgets/indices_card.dart'; // Keep this
-// Removed unused import: import '../widgets/ai_summary_card.dart';
-import '../widgets/hourly_forecast_card.dart'; // Keep this
-import '../widgets/weekly_forecast_card.dart'; // Keep this
+// MODIFICATION: Cleaned up imports, no longer need LocationSearchState here.
+import '../state/weather_data_state.dart';
 
-// Import the new independent widgets
+// Import widgets
+import '../widgets/search_bar_widget.dart';
+import '../widgets/indices_card.dart';
+import '../widgets/hourly_forecast_card.dart';
+import '../widgets/weekly_forecast_card.dart';
 import '../widgets/combined_temperature_forecast_card.dart';
 import '../widgets/other_details_sunrise_sunset_card.dart';
-import 'package:myapp/features/weather/presentation/widgets/banner_ad_widget.dart'; // <-- Changed to BannerAdWidget
+import 'package:myapp/features/weather/presentation/widgets/banner_ad_widget.dart';
+import 'package:myapp/features/weather/presentation/widgets/native_ad_widget.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final weatherDataState = context.watch<WeatherDataState>();
+
     return Scaffold(
-      backgroundColor: Colors.grey[100], // Light grey background
+      backgroundColor: Colors.grey[100],
       body: SafeArea(
-        child: GestureDetector(
-          onTap: () {
-            FocusScope.of(context).unfocus(); // Hide keyboard on tap outside
-            Provider.of<WeatherState>(context, listen: false).clearSuggestions(); // Also clear suggestions
-          },
-          child: Column(
-            children: [
-              // The alert icon next to the search bar should handle the alert dialog.
-              const SearchBarWidget(),
-              const SuggestionsList(), // Handles its own visibility based on state
-              // Added location and update time display
-              Consumer<WeatherState>(
-                builder: (context, weatherState, child) {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0), // Adjusted padding
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(
-                          children: [
-                            const Icon(Icons.location_on_outlined, size: 18.0, color: Colors.grey), // Location icon
-                            const SizedBox(width: 4.0),
-                            Text(
-                              weatherState.currentLocation.isNotEmpty 
-                                  ? weatherState.currentLocation 
-                                  : '獲取地點資訊...', // Display current selected/searched location
-                              style: TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold, color: Colors.grey[800]),
-                            ),
-                          ],
-                        ),
-                        Text(
-                          weatherState.currentWeatherInfo?.lastUpdated != null
-                              ? '更新於 ${DateFormat('HH:mm').format(weatherState.currentWeatherInfo!.lastUpdated)}'
-                              : '', // Display update time from weather info
-                          style: TextStyle(fontSize: 14.0, color: Colors.grey[600]),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-              Expanded(
-                child: _buildContentArea(),
-              ),
-            ],
-          ),
+        // MODIFICATION: GestureDetector is removed as it's no longer needed on this screen.
+        child: Column(
+          children: [
+            const SearchBarWidget(),
+            
+            Expanded(
+              child: _buildContentArea(context, weatherDataState),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildContentArea() {
-    return Consumer<WeatherState>(
-      builder: (context, weatherState, child) {
-        return AnimatedSwitcher(
-          duration: const Duration(milliseconds: 400),
-          transitionBuilder: (Widget child, Animation<double> animation) {
-            return FadeTransition(opacity: animation, child: child);
-          },
-          key: ValueKey(weatherState.isLoading || weatherState.currentWeatherInfo == null),
-          child: weatherState.isLoading
-              ? Center(key: const ValueKey('loading'), child: CircularProgressIndicator(color: Theme.of(context).primaryColor))
-              : (weatherState.currentWeatherInfo != null
-                  ? _buildWeatherDetails(weatherState.currentWeatherInfo!)
-                  : Center(key: const ValueKey('prompt'), child: Text('請搜尋地點以查看天氣', style: TextStyle(color: Colors.grey[600])))),
-        );
+  Widget _buildContentArea(BuildContext context, WeatherDataState weatherDataState) {
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 400),
+      transitionBuilder: (Widget child, Animation<double> animation) {
+        return FadeTransition(opacity: animation, child: child);
       },
+      child: weatherDataState.isLoading
+          ? Center(key: const ValueKey('loading'), child: CircularProgressIndicator(color: Theme.of(context).primaryColor))
+          : (weatherDataState.temperature != null
+              ? _buildWeatherDetails(context, weatherDataState)
+              : const Center(key: ValueKey('prompt'), child: Text('點擊上方管理或查找地點', style: TextStyle(color: Colors.grey, fontSize: 16)))),
     );
   }
 
-  // Main scrolling view for weather details - implementing the new layout
-  Widget _buildWeatherDetails(WeatherInfo data) {
+  Widget _buildWeatherDetails(BuildContext context, WeatherDataState newState) {
     return ListView(
-      key: ValueKey('weather_details_${data.locationName}'), // Important for AnimatedSwitcher
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0), // Added vertical padding
+      key: ValueKey('weather_details_${newState.currentLocationName}'),
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
       children: [
-        // 1. Combined Temperature, 3-hour Forecast, and Temperature Chart Card
-        CombinedTemperatureForecastCard(data: data), // Use the new widget
-        const BannerAdWidget(), // <-- Changed to BannerAdWidget here
-
-        const SizedBox(height: 12), // Spacing between cards
-
-        // 2. Lifestyle Indices Card (Reusing the existing IndicesCard structure)
-        IndicesCard(data: data), // Keep the existing IndicesCard
-
-        const SizedBox(height: 12), // Spacing between cards
-
-        // 3. Other Details + Sunrise/Sunset Card
-        OtherDetailsSunriseSunsetCard(data: data), // Use the new widget
-
-        const SizedBox(height: 12), // Spacing between cards
-
-        // Keep the other cards below the main three, as they were not specified for re-arrangement
-        // AiSummaryCard(data: data), // You can uncomment and place this where needed
-        // const SizedBox(height: 12),
-        HourlyForecastCard(hourlyForecasts: data.hourlyForecasts), // Full hourly forecast
+        CombinedTemperatureForecastCard(
+          condition: newState.condition,
+          conditionIcon: newState.conditionIcon,
+          temperature: newState.temperature,
+          feelsLike: newState.hourlyForecasts.isNotEmpty ? newState.hourlyForecasts.first.apparentTemperature : null,
+          tempHigh: newState.tempHigh,
+          tempLow: newState.tempLow,
+          precipitationChance: newState.hourlyForecasts.isNotEmpty
+              ? newState.hourlyForecasts.first.precipitationChance
+              : null,
+          aqi: newState.airQuality?.aqi,
+          aqiLevel: newState.airQuality?.status,
+        ),
+        const SizedBox(height: 6),
+        const SmallNativeAd(),
+        //const BannerAdWidget(),
+        const SizedBox(height: 6),
+        
+        IndicesCard(
+          temperature: newState.temperature,
+          feelsLike: newState.hourlyForecasts.isNotEmpty ? newState.hourlyForecasts.first.apparentTemperature : null,
+          tempHigh: newState.tempHigh,
+          tempLow: newState.tempLow,
+          humidity: newState.observation?.observations?.humidityAsInt,
+          precipitationChance: newState.hourlyForecasts.isNotEmpty
+              ? newState.hourlyForecasts.first.precipitationChance
+              : null,
+          aqi: newState.airQuality?.aqi,
+          uvIndex: newState.uvIndex?.uvIndex,
+          windSpeed: newState.observation?.observations?.windSpeedAsDouble,
+        ),
         const SizedBox(height: 12),
-        WeeklyForecastCard(dailyForecasts: data.dailyForecasts),
 
-        const SizedBox(height: 20), // Bottom padding
+        OtherDetailsSunriseSunsetCard(
+          windSpeed: newState.observation?.observations?.windSpeedAsDouble,
+          humidity: newState.observation?.observations?.humidityAsInt,
+          precipitationChance: newState.hourlyForecasts.isNotEmpty
+              ? newState.hourlyForecasts.first.precipitationChance
+              : null,
+          uvIndex: newState.uvIndex?.uvIndex,
+          uvLevel: newState.uvIndex?.level,
+          aqi: newState.airQuality?.aqi,
+          aqiLevel: newState.airQuality?.status,
+          sunrise: newState.sunriseSunset?.sunriseTime,
+          sunset: newState.sunriseSunset?.sunsetTime,
+        ),
+        const SizedBox(height: 12),
+        
+        HourlyForecastCard(hourlyForecasts: newState.hourlyForecasts),
+        const SizedBox(height: 12),
+        WeeklyForecastCard(dailyForecasts: newState.dailyForecasts),
+
+        const SizedBox(height: 20),
       ],
     );
   }

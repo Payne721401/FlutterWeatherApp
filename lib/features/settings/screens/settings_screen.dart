@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
+import 'package:myapp/features/settings/domain/repositories/notification_settings_repository.dart';
 import 'package:myapp/features/settings/widgets/about_section.dart';
 import 'package:myapp/features/settings/widgets/language_setting_section.dart';
 import 'package:myapp/features/settings/widgets/notification_settings_section.dart';
@@ -18,6 +19,9 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   String _selectedLanguage = 'zh';
   bool _notificationsEnabled = true;
+  bool _isWeatherAlertEnabled = false;
+  bool _isEveningForecastEnabled = false;
+  bool _isImminentRainEnabled = false; // State for imminent rain
   TimeOfDay? _doNotDisturbStart;
   TimeOfDay? _doNotDisturbEnd;
 
@@ -27,18 +31,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
   };
 
   late final NotificationHelper _notificationHelper;
+  final NotificationSettingsRepository _settingsRepo = NotificationSettingsRepository();
 
   @override
   void initState() {
     super.initState();
-    // Initialize the NotificationHelper with an instance of FlutterLocalNotificationsPlugin
     _notificationHelper = NotificationHelper(FlutterLocalNotificationsPlugin());
-    _notificationHelper.initNotifications(); // Initialize notification plugin
+    _notificationHelper.initNotifications();
     _loadSettings();
   }
 
   Future<void> _loadSettings() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
+    
+    _isWeatherAlertEnabled = await _settingsRepo.isWeatherAlertsEnabled();
+    _isEveningForecastEnabled = await _settingsRepo.isEveningForecastEnabled();
+    _isImminentRainEnabled = await _settingsRepo.isImminentRainEnabled();
+
     setState(() {
       _selectedLanguage = prefs.getString('language') ?? 'zh';
       _notificationsEnabled = prefs.getBool('notificationsEnabled') ?? true;
@@ -55,7 +64,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     });
   }
 
-  Future<void> _saveSettings() async {
+  Future<void> _saveGeneralSettings() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.setString('language', _selectedLanguage);
     await prefs.setBool('notificationsEnabled', _notificationsEnabled);
@@ -72,44 +81,58 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await prefs.remove('doNotDisturbEndMinutes');
     }
 
-    debugPrint("Settings saved: lang=\$_selectedLanguage, notif=\$_notificationsEnabled, DND Start=\$_doNotDisturbStart, DND End=\$_doNotDisturbEnd");
+    debugPrint("General settings saved.");
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('設定已儲存 (${_languageDisplayNames[_selectedLanguage]})'), duration: const Duration(seconds: 1)),
       );
     }
   }
+  
+  Future<void> _toggleWeatherAlert(bool newValue) async {
+    setState(() {
+      _isWeatherAlertEnabled = newValue;
+    });
+    await _settingsRepo.updateWeatherAlertsSetting(newValue);
+  }
 
-  // This function will be passed down to NotificationSettingsSection
+  Future<void> _toggleEveningForecast(bool newValue) async {
+    setState(() {
+      _isEveningForecastEnabled = newValue;
+    });
+    await _settingsRepo.updateEveningForecastSetting(newValue);
+  }
+
+  Future<void> _toggleImminentRain(bool newValue) async {
+    setState(() {
+      _isImminentRainEnabled = newValue;
+    });
+    await _settingsRepo.updateImminentRainSetting(newValue);
+  }
+
   Future<void> _handleNotificationsEnabledChanged(bool value) async {
+    setState(() {
+      _notificationsEnabled = value;
+    });
+
     if (value) {
-      bool granted = await _notificationHelper.requestNotificationPermission(context);
-      if (granted) {
-        setState(() {
-          _notificationsEnabled = true;
-        });
-        _saveSettings();
-      } else {
-        // If permission not granted, revert switch state
-        setState(() {
-          _notificationsEnabled = false;
-        });
-      }
+      await _notificationHelper.requestNotificationPermission(context);
     } else {
-      setState(() {
-        _notificationsEnabled = false;
-      });
-      _saveSettings();
+      // If global notifications are turned off, also turn off all individual settings and cancel their tasks.
+      if (_isWeatherAlertEnabled) await _toggleWeatherAlert(false);
+      if (_isEveningForecastEnabled) await _toggleEveningForecast(false);
+      if (_isImminentRainEnabled) await _toggleImminentRain(false);
+      
       await _notificationHelper.cancelAllNotifications();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('已關閉所有通知。')), // TODO: Localize
+          const SnackBar(content: Text('已關閉所有通知。')),
         );
       }
     }
+    await _saveGeneralSettings();
   }
 
-  // This function will be passed down to NotificationSettingsSection for DND times
   void _handleDoNotDisturbTimeChanged(bool isStartTime, TimeOfDay? newTime) {
     setState(() {
       if (isStartTime) {
@@ -118,17 +141,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _doNotDisturbEnd = newTime;
       }
     });
-    _saveSettings();
+    _saveGeneralSettings();
   }
 
   @override
   Widget build(BuildContext context) {
-    return CupertinoPageScaffold(
+    return Scaffold(
       backgroundColor: CupertinoColors.systemGroupedBackground,
-      navigationBar: const CupertinoNavigationBar(
-        middle: Text('設定'), // TODO: Localize
+      appBar: AppBar(
+        title: const Text('設定'),
+        automaticallyImplyLeading: false,
       ),
-      child: ListView(
+      body: ListView(
         children: [
           LanguageSettingSection(
             selectedLanguage: _selectedLanguage,
@@ -137,8 +161,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               setState(() {
                 _selectedLanguage = newLanguage;
               });
-              _saveSettings();
-              // TODO: Trigger global state change for localization
+              _saveGeneralSettings();
             },
           ),
           NotificationSettingsSection(
@@ -147,6 +170,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
             doNotDisturbEnd: _doNotDisturbEnd,
             onNotificationsEnabledChanged: _handleNotificationsEnabledChanged,
             onDoNotDisturbTimeChanged: _handleDoNotDisturbTimeChanged,
+          ),
+          CupertinoFormSection.insetGrouped(
+            header: const Text('個別通知設定'),
+            children: [
+              CupertinoListTile(
+                title: const Text('天氣警特報通知'),
+                trailing: CupertinoSwitch(
+                  value: _isWeatherAlertEnabled,
+                  onChanged: _notificationsEnabled ? _toggleWeatherAlert : null,
+                ),
+              ),
+              CupertinoListTile(
+                title: const Text('每日晚間天氣預報'),
+                trailing: CupertinoSwitch(
+                  value: _isEveningForecastEnabled,
+                  onChanged: _notificationsEnabled ? _toggleEveningForecast : null,
+                ),
+              ),
+              CupertinoListTile(
+                title: const Text('即時降雨提醒'),
+                trailing: CupertinoSwitch(
+                  value: _isImminentRainEnabled,
+                  onChanged: _notificationsEnabled ? _toggleImminentRain : null,
+                ),
+              ),
+            ],
           ),
           const AboutSection(),
         ],

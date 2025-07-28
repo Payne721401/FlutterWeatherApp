@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../data/models/weather_data.dart';
 import 'package:intl/intl.dart'; // For time formatting
 import 'weather_card.dart'; // Import WeatherCard
-// import 'dart:math'; // Import for sin function (for curved line)
 
 // Custom painter for the sunrise/sunset timeline curve
 class SunriseSunsetTimelinePainter extends CustomPainter {
@@ -10,14 +8,14 @@ class SunriseSunsetTimelinePainter extends CustomPainter {
   final Color lineColor;
   final Color dotColor;
   final double dotSize;
-  final double curveDepth; // Changed from curveHeight to curveDepth for clarity
+  final double curveDepth;
 
   SunriseSunsetTimelinePainter({
     required this.currentPositionPercentage,
     required this.lineColor,
     required this.dotColor,
     required this.dotSize,
-    this.curveDepth = 35.0, // Increased curve depth
+    this.curveDepth = 35.0,
   });
 
   @override
@@ -29,30 +27,18 @@ class SunriseSunsetTimelinePainter extends CustomPainter {
       ..style = PaintingStyle.stroke;
 
     final path = Path();
-    // Define start and end points of the line
     final startPoint = Offset(0, size.height / 2);
     final endPoint = Offset(size.width, size.height / 2);
-
-    // Define a control point for a gentle upward curve
-    // The Y-coordinate is size.height / 2 - curveDepth to make it go upwards
-    final controlPoint = Offset(size.width / 2, size.height / 2 - curveDepth); // MODIFIED
+    final controlPoint = Offset(size.width / 2, size.height / 2 - curveDepth);
 
     path.moveTo(startPoint.dx, startPoint.dy);
     path.quadraticBezierTo(controlPoint.dx, controlPoint.dy, endPoint.dx, endPoint.dy);
-
     canvas.drawPath(path, paint);
 
-    // Draw the current time dot along the curve (approximated)
     if (currentPositionPercentage >= 0.0 && currentPositionPercentage <= 1.0) {
       final t = currentPositionPercentage;
-
-      // Calculate dot position using quadratic Bezier formula
-      final dotX = (1 - t) * (1 - t) * startPoint.dx +
-                   2 * (1 - t) * t * controlPoint.dx +
-                   t * t * endPoint.dx;
-      final dotY = (1 - t) * (1 - t) * startPoint.dy +
-                   2 * (1 - t) * t * controlPoint.dy +
-                   t * t * endPoint.dy;
+      final dotX = (1 - t) * (1 - t) * startPoint.dx + 2 * (1 - t) * t * controlPoint.dx + t * t * endPoint.dx;
+      final dotY = (1 - t) * (1 - t) * startPoint.dy + 2 * (1 - t) * t * controlPoint.dy + t * t * endPoint.dy;
 
       final dotPaint = Paint()..color = dotColor;
       canvas.drawCircle(Offset(dotX, dotY), dotSize / 2, dotPaint);
@@ -61,41 +47,58 @@ class SunriseSunsetTimelinePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) {
-    // Repaint if the current position percentage or curve depth changes
     return oldDelegate is SunriseSunsetTimelinePainter &&
            (oldDelegate.currentPositionPercentage != currentPositionPercentage ||
             oldDelegate.curveDepth != curveDepth);
   }
 }
 
-
 class OtherDetailsSunriseSunsetCard extends StatelessWidget {
-  final WeatherInfo data;
+  // MODIFIED: Use independent, nullable properties instead of the old WeatherInfo model
+  final double? windSpeed;
+  final int? humidity;
+  final int? precipitationChance;
+  final int? uvIndex;
+  final String? uvLevel;
+  final int? aqi;
+  final String? aqiLevel;
+  final TimeOfDay? sunrise;
+  final TimeOfDay? sunset;
 
-  const OtherDetailsSunriseSunsetCard({super.key, required this.data});
+  const OtherDetailsSunriseSunsetCard({
+    super.key, 
+    this.windSpeed,
+    this.humidity,
+    this.precipitationChance,
+    this.uvIndex,
+    this.uvLevel,
+    this.aqi,
+    this.aqiLevel,
+    this.sunrise,
+    this.sunset,
+  });
 
-  // Helper function to build weather detail item (icon, title, value)
   Widget _buildWeatherDetailItem(IconData icon, String title, String value, {Color? valueColor, String? levelText}) {
     return Expanded(
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center, // Align items vertically to center
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Icon(icon, size: 28, color: Colors.grey[700]), // Increased icon size
-          const SizedBox(width: 12), // Spacing between icon and text column
+          Icon(icon, size: 28, color: Colors.grey[700]),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center, // Vertically center the column content
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(title, style: TextStyle(fontSize: 14, color: Colors.grey[700])), // Title
-                const SizedBox(height: 2), // Spacing between title and value
+                Text(title, style: TextStyle(fontSize: 14, color: Colors.grey[700])),
+                const SizedBox(height: 2),
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.baseline,
                   textBaseline: TextBaseline.alphabetic,
                   children: [
-                    Text(value, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: valueColor)), // Value
-                     if (levelText != null) ...[ // Display level text if available
-                      const SizedBox(width: 6), // Spacing between value and level text
+                    Text(value, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: valueColor)),
+                     if (levelText != null) ...[
+                      const SizedBox(width: 6),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 2.0),
                         decoration: BoxDecoration(
@@ -118,7 +121,6 @@ class OtherDetailsSunriseSunsetCard extends StatelessWidget {
     );
   }
 
-  // Helper function to determine UV Index color
   Color _getUvIndexColor(double uvIndex) {
     if (uvIndex < 3) return Colors.green;
     if (uvIndex < 6) return Colors.orange;
@@ -127,7 +129,6 @@ class OtherDetailsSunriseSunsetCard extends StatelessWidget {
     return Colors.deepPurple;
   }
 
-  // Helper function to get UV Index level text
   String _getUvIndexLevelText(double uvIndex) {
      if (uvIndex < 3) return '低量';
      if (uvIndex < 6) return '中量';
@@ -136,17 +137,15 @@ class OtherDetailsSunriseSunsetCard extends StatelessWidget {
      return '危險';
   }
 
-   // Helper function to determine Air Quality Index color
   Color _getAirQualityColor(double aqi) {
-    if (aqi < 51) return Colors.green; // Good
-    if (aqi < 101) return Colors.orange; // Moderate
-    if (aqi < 151) return Colors.red; // Unhealthy for Sensitive Groups
-    if (aqi < 201) return Colors.purple; // Unhealthy
-    if (aqi < 301) return Colors.deepPurple; // Very Unhealthy
-    return Colors.brown; // Hazardous
+    if (aqi < 51) return Colors.green;
+    if (aqi < 101) return Colors.orange;
+    if (aqi < 151) return Colors.red;
+    if (aqi < 201) return Colors.purple;
+    if (aqi < 301) return Colors.deepPurple;
+    return Colors.brown;
   }
 
-  // Helper function to get Air Quality Index level text
   String _getAirQualityLevelText(double aqi) {
     if (aqi < 51) return '良好';
     if (aqi < 101) return '普通';
@@ -156,7 +155,6 @@ class OtherDetailsSunriseSunsetCard extends StatelessWidget {
     return '危害';
   }
 
-  // Helper to convert TimeOfDay to DateTime for formatting
   DateTime _timeOfDayToDateTime(TimeOfDay time) {
     final now = DateTime.now();
     return DateTime(now.year, now.month, now.day, time.hour, time.minute);
@@ -164,52 +162,47 @@ class OtherDetailsSunriseSunsetCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Accessing fields directly from data (non-nullable as per model definition)
-    // Safely display wind speed
-    final windSpeedText = '${data.windSpeed.round()} km/h'; // Rounded wind speed
-    // Safely display humidity
-    final humidityText = '${data.humidity}%';
-    // Safely display precipitation chance
-    final precipitationChanceText = '${data.precipitationChance}%';
+    // MODIFIED: Use passed-in properties with null-safety
+    final windSpeedText = '${(windSpeed ?? 0).round()}級';
+    final humidityText = '${humidity ?? 0}%';
+    final precipitationChanceText = '${precipitationChance ?? 0}%';
 
-    // Safely display UV Index
-    final uvIndex = data.uvIndex.toDouble();
-    final uvIndexText = '${uvIndex.round()}';
-    final uvIndexColor = _getUvIndexColor(uvIndex);
-    final uvIndexLevelText = _getUvIndexLevelText(uvIndex);
+    // Safely display UV Index by providing a default value
+    final uvIndexValue = (uvIndex ?? 0).toDouble();
+    final uvIndexText = '${uvIndexValue.round()}';
+    final uvIndexColor = _getUvIndexColor(uvIndexValue);
+    final uvIndexLevelText = uvLevel ?? _getUvIndexLevelText(uvIndexValue);
 
-    // Safely display Air Quality Index
-    final aqi = data.aqi.toDouble();
-    final airQualityIndexText = '${aqi.round()}';
-    final airQualityColor = _getAirQualityColor(aqi);
-    final airQualityLevelText = _getAirQualityLevelText(aqi);
+    // Safely display Air Quality Index by providing a default value
+    final aqiValue = (aqi ?? 0).toDouble();
+    final airQualityIndexText = '${aqiValue.round()}';
+    final airQualityColor = _getAirQualityColor(aqiValue);
+    final airQualityLevelText = aqiLevel ?? _getAirQualityLevelText(aqiValue);
 
-    // Safely display sunrise and sunset times
-    final sunriseTime = DateFormat.Hm().format(_timeOfDayToDateTime(data.sunrise));
-    final sunsetTime = DateFormat.Hm().format(_timeOfDayToDateTime(data.sunset));
-
-    // Calculate current time percentage between sunrise and sunset for the timeline dot
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day); // Get today's date
-    // Combine today's date with TimeOfDay for full DateTime objects
-    final sunriseDateTime = DateTime(today.year, today.month, today.day, data.sunrise.hour, data.sunrise.minute);
-    final sunsetDateTime = DateTime(today.year, today.month, today.day, data.sunset.hour, data.sunset.minute);
-
-    // Handle cases where sunrise might be technically on the next day (e.g., late night)
-    final effectiveSunrise = sunriseDateTime.isAfter(sunsetDateTime) ? sunriseDateTime.subtract(const Duration(days: 0)) : sunriseDateTime; // No change if sunrise is earlier
-    final effectiveSunset = sunsetDateTime.isBefore(effectiveSunrise) ? sunsetDateTime.add(const Duration(days: 1)) : sunsetDateTime; // Add a day to sunset if it's before sunrise
-
-    final totalDaylightDuration = effectiveSunset.difference(effectiveSunrise);
-    final elapsedDuration = now.difference(effectiveSunrise);
+    // MODIFIED: Handle nullable sunrise/sunset times
+    final sunriseTime = sunrise != null ? DateFormat.Hm().format(_timeOfDayToDateTime(sunrise!)) : '--:--';
+    final sunsetTime = sunset != null ? DateFormat.Hm().format(_timeOfDayToDateTime(sunset!)) : '--:--';
 
     double currentPositionPercentage = 0.0;
-    if (totalDaylightDuration.inMinutes > 0 && elapsedDuration.inMinutes >= 0) {
-       currentPositionPercentage = (elapsedDuration.inMinutes / totalDaylightDuration.inMinutes).clamp(0.0, 1.0);
+    if (sunrise != null && sunset != null) {
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      final sunriseDateTime = DateTime(today.year, today.month, today.day, sunrise!.hour, sunrise!.minute);
+      final sunsetDateTime = DateTime(today.year, today.month, today.day, sunset!.hour, sunset!.minute);
+      
+      final effectiveSunrise = sunriseDateTime.isAfter(sunsetDateTime) ? sunriseDateTime.subtract(const Duration(days: 0)) : sunriseDateTime;
+      final effectiveSunset = sunsetDateTime.isBefore(effectiveSunrise) ? sunsetDateTime.add(const Duration(days: 1)) : sunsetDateTime;
+
+      final totalDaylightDuration = effectiveSunset.difference(effectiveSunrise);
+      final elapsedDuration = now.difference(effectiveSunrise);
+      
+      if (totalDaylightDuration.inMinutes > 0 && elapsedDuration.inMinutes >= 0) {
+         currentPositionPercentage = (elapsedDuration.inMinutes / totalDaylightDuration.inMinutes).clamp(0.0, 1.0);
+      }
     }
 
-    // Create the Sunrise/Sunset detail item content
     final sunriseSunsetDetailItem = _buildWeatherDetailItem(
-      Icons.wb_sunny_outlined, // Placeholder icon for sunrise/sunset
+      Icons.wb_sunny_outlined,
       '日出/日落',
       '$sunriseTime / $sunsetTime',
     );
@@ -218,27 +211,25 @@ class OtherDetailsSunriseSunsetCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('天氣觀測站', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)), // Changed title
-          const SizedBox(height: 16), // Increased spacing after title
-
-          // Other details in two columns
-          IntrinsicHeight( // Ensure equal height for rows
+          Text('天氣觀測站', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 16),
+          IntrinsicHeight(
             child: Column(
               children: [
                 Row(
-                  crossAxisAlignment: CrossAxisAlignment.start, // Align items at the start of the row
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _buildWeatherDetailItem(Icons.wind_power, '風速', windSpeedText),
-                    const SizedBox(width: 16), // Spacing between items
+                    const SizedBox(width: 16),
                     _buildWeatherDetailItem(Icons.water_drop, '濕度', humidityText),
                   ],
                 ),
-                const SizedBox(height: 12), // Spacing between detail rows
+                const SizedBox(height: 12),
                 Row(
-                  crossAxisAlignment: CrossAxisAlignment.start, // Align items at the start of the row
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _buildWeatherDetailItem(Icons.umbrella, '降雨機率', precipitationChanceText),
-                    const SizedBox(width: 16), // Spacing between items
+                    const SizedBox(width: 16),
                     _buildWeatherDetailItem(
                       Icons.sunny,
                       '紫外線指數',
@@ -248,9 +239,9 @@ class OtherDetailsSunriseSunsetCard extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 12), // Spacing between detail rows
+                const SizedBox(height: 12),
                  Row(
-                  crossAxisAlignment: CrossAxisAlignment.start, // Align items at the start of the row
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _buildWeatherDetailItem(
                       Icons.air,
@@ -259,51 +250,40 @@ class OtherDetailsSunriseSunsetCard extends StatelessWidget {
                       valueColor: airQualityColor,
                       levelText: airQualityLevelText,
                     ),
-                    // Add the Sunrise/Sunset detail item here
-                    const SizedBox(width: 16), // Spacing between items
+                    const SizedBox(width: 16),
                     sunriseSunsetDetailItem,
                   ],
                 ),
               ],
             ),
           ),
-
-          // Sunrise/Sunset timeline visualization (at the bottom)
-          const SizedBox(height: 24), // Increased spacing before timeline
+          const SizedBox(height: 24),
           SizedBox(
-            height: 50, // Height to accommodate the curve and labels
-            child: LayoutBuilder( // Use LayoutBuilder to get the available width
+            height: 50,
+            child: LayoutBuilder(
               builder: (context, constraints) {
-                // final timelineWidth = constraints.maxWidth; // THIS LINE IS NOT USED AND CAN BE REMOVED
-                 // Calculate dot position based on percentage and available width
-                 // Subtract half the dot width to attempt to center it (simplification)
-                // final dotPosition = currentPositionPercentage * timelineWidth - (12/2); // THIS LINE IS NOT USED AND CAN BE REMOVED
-
                 return Stack(
-                   clipBehavior: Clip.none, // Allow children to overflow
+                   clipBehavior: Clip.none,
                   children: [
-                     // Curved Timeline Line and Dot (drawn by CustomPainter)
                      Positioned.fill(
                        child: CustomPaint(
                          painter: SunriseSunsetTimelinePainter(
                            currentPositionPercentage: currentPositionPercentage,
-                           lineColor: Colors.amber[700]!, // Use amber color
-                           dotColor: Colors.amber[700]!, // Use amber color for dot
-                           dotSize: 12.0, // Dot size
-                           curveDepth: 35.0, // Control the curve depth here
+                           lineColor: Colors.amber[700]!,
+                           dotColor: Colors.amber[700]!,
+                           dotSize: 12.0,
+                           curveDepth: 35.0,
                          ),
                        ),
                      ),
-
-                    // Sunrise and Sunset time labels (positioned below the timeline)
                     Positioned(
                       left: 0,
-                      bottom: 0, // Position at the bottom
+                      bottom: 0,
                       child: Text(sunriseTime, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
                     ),
                     Positioned(
                       right: 0,
-                      bottom: 0, // Position at the bottom
+                      bottom: 0,
                       child: Text(sunsetTime, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
                     ),
                   ],

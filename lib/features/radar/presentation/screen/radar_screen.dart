@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-// import 'package:webview_flutter/webview_flutter.dart'; // Import webview_flutter
 
 import '../../data/models/map_layer_type.dart';
+import '../../data/services/radar_forecast_service.dart';
 import '../state/radar_state.dart';
 import '../widgets/layer_toggle_buttons.dart';
 import '../widgets/radar_view.dart';
@@ -17,18 +17,13 @@ class RadarScreen extends StatefulWidget {
 }
 
 class _RadarScreenState extends State<RadarScreen> {
-  // Removed WebViewController declaration from here
-
-  @override
-  void initState() {
-    super.initState();
-    // Removed WebViewController initialization from here
-  }
 
   @override
   Widget build(BuildContext context) {
+    final radarForecastService = Provider.of<RadarForecastService>(context, listen: false);
+
     return ChangeNotifierProvider(
-      create: (_) => RadarState(),
+      create: (_) => RadarState(forecastService: radarForecastService),
       child: Consumer<RadarState>(
         builder: (context, radarState, child) {
           final bool isRefreshingActiveView =
@@ -63,21 +58,19 @@ class _RadarScreenState extends State<RadarScreen> {
                 IconButton(
                   icon: const Icon(Icons.my_location),
                   tooltip: '我的位置',
-                  onPressed: radarState.isFetchingLocation
-                        ? null
-                        : radarState.centerOnUserLocation,
+                  onPressed: radarState.isFetchingLocation ? null : radarState.determinePosition,
                 ),
                 const SizedBox(width: 8),
               ],
             ),
-            body: Column( // Keep Column, but ensure its flexible child is Expanded
-              children: [ // Removed SingleChildScrollView from here, it should be in individual views
+            body: Column(
+              children: [
                 LayerToggleButtons(
                   selectedView: radarState.selectedView,
                   onSelected: radarState.setSelectedView,
                 ),
 
-                // Warning message for Numerical Forecast
+                // RESTORED: The warning message for the Numerical Forecast view.
                 if (radarState.selectedView == MapLayerType.numericalForecast)
                   const Padding(
                     padding: EdgeInsets.all(8.0),
@@ -88,32 +81,22 @@ class _RadarScreenState extends State<RadarScreen> {
                     ),
                   ),
 
-                // Loading indicator for either view
+                // REMOVED: The rainfall forecast message is no longer here.
+                // It will be moved to radar_view.dart.
+
                 if (radarState.selectedView != MapLayerType.numericalForecast && (radarState.isLoadingRadarImages || radarState.isLoadingQpfImages))
                   const LinearProgressIndicator(),
 
-                // Location Info Section / Rain Alert
-                if (radarState.isFetchingLocation)
-                  const Padding(
-                    padding: EdgeInsets.all(8.0),
-                    child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [CircularProgressIndicator(strokeWidth: 2), SizedBox(width: 10), Text("正在取得位置...")])
-                  )
-                else if (radarState.locationError != null && radarState.selectedView != MapLayerType.numericalForecast)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                    child: Text(radarState.locationError!, style: const TextStyle(color: Colors.red)),
-                  ),
-
-                Expanded( // <-- HERE: Wrap the Builder in Expanded
+                Expanded(
                   child: Builder(
                     builder: (context) {
-                      if (radarState.selectedView == MapLayerType.radarEcho) {
-                        return RadarView(radarState: radarState);
-                      } else if (radarState.selectedView == MapLayerType.qpf) {
-                        return QpfView(radarState: radarState);
-                      } else {
-                        // Pass a flag to NumericalForecastView instead of the controller
-                        return NumericalForecastView(shouldLoad: radarState.selectedView == MapLayerType.numericalForecast);
+                      switch (radarState.selectedView) {
+                        case MapLayerType.radarEcho:
+                          return RadarView(radarState: radarState);
+                        case MapLayerType.qpf:
+                          return QpfView(radarState: radarState);
+                        case MapLayerType.numericalForecast:
+                          return NumericalForecastView(shouldLoad: true);
                       }
                     },
                   ),

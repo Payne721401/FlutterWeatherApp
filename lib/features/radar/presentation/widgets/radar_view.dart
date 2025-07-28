@@ -1,10 +1,12 @@
-// import 'dart:typed_data';
 import 'package:flutter/material.dart';
 
-import '../state/radar_state.dart'; // Need state for data and callbacks
-import 'playback_controls.dart'; // Import playback controls
-import 'ai_analysis_panel.dart'; // Import AI panel
-import 'radar_legend.dart'; // 防止溢出
+import '../state/radar_state.dart';
+import 'playback_controls.dart';
+import 'ai_analysis_panel.dart';
+import 'radar_legend.dart';
+
+const double radarImageWidth = 3600.0;
+const double radarImageHeight = 3600.0;
 
 class RadarView extends StatelessWidget {
   final RadarState radarState;
@@ -13,109 +15,111 @@ class RadarView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final devicePixelRatio = MediaQuery.of(context).devicePixelRatio;
+    final int cacheWidth = (screenWidth * devicePixelRatio).round().clamp(0, 2048);
+
     final currentImageBytes = (radarState.radarImageBytes.isNotEmpty &&
                                radarState.currentRadarFrame >= 0 &&
                                radarState.currentRadarFrame < radarState.radarImageBytes.length)
                               ? radarState.radarImageBytes[radarState.currentRadarFrame]
                               : null;
 
-    return SingleChildScrollView( // <-- HERE: Wrap the entire Column in SingleChildScrollView
+    return SingleChildScrollView(
       child: Column(
         children: [
-          // --- START: Added Rain Alert Section ---
+          // MOVED: The rainfall forecast message is now part of RadarView
+          // so it only shows on the "Radar Echo" tab.
           Padding(
-            padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 8.0), // Adjust padding
+            padding: const EdgeInsets.fromLTRB(16.0, 8.0, 16.0, 0), // Adjust padding as needed
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
               decoration: BoxDecoration(
-                color: Colors.blue.shade50, // Light blue background
+                color: Colors.blue.shade50,
                 borderRadius: BorderRadius.circular(8.0),
-                border: Border.all(color: Colors.blue.shade100)
+                border: Border.all(color: Colors.blue.shade100),
               ),
               child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.cloudy_snowing, color: Colors.blue.shade700, size: 20), // Example icon
+                  Icon(Icons.cloudy_snowing, color: Colors.blue.shade700, size: 20),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      radarState.rainAlertMessage, // Use placeholder from state
-                      style: TextStyle(color: Colors.blue.shade900, fontSize: 14),
+                      radarState.rainfallForecastMessage,
+                      style: TextStyle(
+                        color: Colors.blue.shade900,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
                     ),
                   ),
                 ],
               ),
             ),
           ),
-          // --- END: Added Rain Alert Section ---
 
-          // Radar Image AspectRatio (flexible height, now not Expanded)
+          // --- Radar Image Display ---
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0), // Adjusted padding
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
             child: AspectRatio(
-              aspectRatio: 1.0, // Keeping 1:1 aspect ratio for the image container
+              aspectRatio: 1.0,
               child: Container(
-                clipBehavior: Clip.hardEdge, // Ensure children (like Positioned) don't overflow
+                clipBehavior: Clip.hardEdge,
                 decoration: BoxDecoration(
                   border: Border.all(color: Colors.grey.shade300),
-                  color: Colors.grey[200], // Background for loading/error
+                  color: Colors.grey.shade200,
                 ),
                 child: Stack(
                   alignment: Alignment.center,
                   children: [
                     if (radarState.isLoadingRadarImages)
-                      const Center(child: CircularProgressIndicator()) // Centered indicator
+                      const Center(child: CircularProgressIndicator())
                     else if (currentImageBytes != null)
-                      // InteractiveViewer for zoom/pan
-                      InteractiveViewer(
-                        transformationController: radarState.transformationController, // Use controller from state
-                        minScale: 0.5, // Example minimum scale
-                        maxScale: 4.0, // Example maximum scale
-                        child: Stack(
-                          children: [
-                            // The Radar Image itself
-                            Image.memory(
-                              currentImageBytes,
-                              fit: BoxFit.contain,
-                              width: double.infinity, // Ensure Stack fills InteractiveViewer space
-                              height: double.infinity,
-                              gaplessPlayback: true,
-                              filterQuality: FilterQuality.medium,
-                            ),
-                            // User Location Marker positioned within the image coordinate system
-                            if (radarState.currentPosition != null)
-                              Builder( // Use builder to get correct context size for positioning
-                                builder: (context) {
-                                  final renderBox = context.findRenderObject() as RenderBox?;
-                                  final size = renderBox?.size ?? const Size(double.infinity, double.infinity);
-                                  final pixelPoint = radarState.convertLatLngToPixel(
-                                    radarState.currentPosition!.latitude,
-                                    radarState.currentPosition!.longitude,
-                                  );
-                                  // Adjust pixel calculation if convertLatLngToPixel size differs from widget size
-                                  // This assumes convertLatLngToPixel uses the fixed radarImageWidth/Height constants
-                                  if (pixelPoint != null && size.width > 0 && size.height > 0) {
-                                    // Calculate position relative to the widget size
-                                    final double relativeX = (pixelPoint.x / radarImageWidth) * size.width;
-                                    final double relativeY = (pixelPoint.y / radarImageHeight) * size.height;
-                                    // Ensure marker stays within bounds
-                                    if (relativeX >= 0 && relativeX <= size.width && relativeY >= 0 && relativeY <= size.height){
-                                        return Positioned(
-                                          left: relativeX - 12, // Offset to center the pin icon
-                                          top: relativeY - 24, // Offset to place pin tip at the location
-                                          child: Icon(Icons.location_pin, color: Colors.red, size: 24),
-                                        );
-                                    }
-                                  }
-                                  return const SizedBox.shrink(); // Return empty if out of bounds or no size
-                                }
-                              ),
-                          ]
-                        ),
+                      Image.memory(
+                        currentImageBytes,
+                        key: ValueKey('radar_${radarState.currentRadarFrame}'),
+                        cacheWidth: cacheWidth,
+                        fit: BoxFit.contain,
+                        gaplessPlayback: true,
+                        filterQuality: FilterQuality.medium,
                       )
                     else
                       const Center(child: Text("無可用雷達圖片")),
 
-                    // Legend positioned over everything (except maybe custom controls)
+                    // --- Location Pin ---
+                    if (radarState.currentPosition != null)
+                      Builder(
+                        builder: (context) {
+                          final renderBox = context.findRenderObject() as RenderBox?;
+                          if (renderBox == null || !renderBox.hasSize || renderBox.size.isEmpty) {
+                            return const SizedBox.shrink();
+                          }
+                          final size = renderBox.size;
+
+                          final pixelPoint = radarState.convertLatLngToPixel(
+                            radarState.currentPosition!.latitude,
+                            radarState.currentPosition!.longitude,
+                          );
+
+                          if (pixelPoint != null) {
+                            final double relativeX = (pixelPoint.x / radarImageWidth) * size.width;
+                            final double relativeY = (pixelPoint.y / radarImageHeight) * size.height;
+                            
+                            if (relativeX.isFinite && relativeY.isFinite) {
+                              return Positioned(
+                                left: relativeX - 12,
+                                top: relativeY - 24,
+                                child: Icon(Icons.location_pin, color: Colors.red, size: 24),
+                              );
+                            }
+                          }
+                          return const SizedBox.shrink();
+                        }
+                      ),
+
+                    // --- Legend ---
                     Positioned(
                       top: 5,
                       right: 5,
@@ -130,11 +134,11 @@ class RadarView extends StatelessWidget {
           // Playback Controls
           PlaybackControls(radarState: radarState),
 
-          // --- START: Conditional AI Analysis Section ---
+          // --- AI Analysis Section ---
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
             child: radarState.showAiAnalysis
-                ? AiAnalysisPanel(onClose: () => radarState.toggleAiAnalysis(false)) // Pass close callback
+                ? AiAnalysisPanel(onClose: () => radarState.toggleAiAnalysis(false))
                 : SizedBox(
                     width: double.infinity,
                     child: ElevatedButton.icon(
@@ -142,18 +146,13 @@ class RadarView extends StatelessWidget {
                       label: const Text("AI 圖片分析"),
                       style: ElevatedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 12.0),
-                        // You might want to define primary/onPrimary explicitly for themes
-                        // backgroundColor: Theme.of(context).colorScheme.secondary, 
-                        // foregroundColor: Theme.of(context).colorScheme.onSecondary,
                       ),
                       onPressed: () {
                         radarState.toggleAiAnalysis(true);
-                        // Note: Actual analysis logic should be triggered here or within AiAnalysisPanel
                       },
                     ),
                   ),
           ),
-          // --- END: Conditional AI Analysis Section ---
         ],
       ),
     );
