@@ -34,7 +34,10 @@
 	<string>This app needs access to location to show your position on the radar map.</string>
 
 	<key>GADApplicationIdentifier</key>
-	<string>ca-app-pub-8445759188354532~7748025248</string>
+	<!-- <string>ca-app-pub-8445759188354532~7748025248</string> -->
+	<string>ca-app-pub-3940256099942544~1458002511</string>
+
+	
 
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
