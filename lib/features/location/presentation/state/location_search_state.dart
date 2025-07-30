@@ -4,30 +4,41 @@ import '../../domain/usecases/get_saved_locations_usecase.dart';
 import '../../domain/usecases/save_location_usecase.dart';
 import '../../domain/usecases/remove_location_usecase.dart';
 import '../../../../utils/taiwan_township_coordinates.dart';
+import '../../domain/usecases/get_recent_searches_usecase.dart';
+import '../../domain/usecases/save_recent_search_usecase.dart';
 
 class LocationSearchState extends ChangeNotifier {
   final TextEditingController searchController = TextEditingController();
   final GetSavedLocationsUseCase _getSavedLocationsUseCase;
   final SaveLocationUseCase _saveLocationUseCase;
   final RemoveLocationUseCase _removeLocationUseCase;
+  final GetRecentSearchesUseCase _getRecentSearchesUseCase;
+  final SaveRecentSearchUseCase _saveRecentSearchUseCase;
 
   List<LocationData> _filteredLocations = [];
   List<LocationData> _savedLocations = [];
+  List<LocationData> _recentSearches = [];
 
   LocationSearchState({
     required GetSavedLocationsUseCase getSavedLocationsUseCase,
     required SaveLocationUseCase saveLocationUseCase,
     required RemoveLocationUseCase removeLocationUseCase,
+    required GetRecentSearchesUseCase getRecentSearchesUseCase,
+    required SaveRecentSearchUseCase saveRecentSearchUseCase,
   })  : _getSavedLocationsUseCase = getSavedLocationsUseCase,
         _saveLocationUseCase = saveLocationUseCase,
-        _removeLocationUseCase = removeLocationUseCase {
+        _removeLocationUseCase = removeLocationUseCase,
+        _getRecentSearchesUseCase = getRecentSearchesUseCase,
+        _saveRecentSearchUseCase = saveRecentSearchUseCase {
     searchController.addListener(_onSearchChanged);
-    loadSavedLocations(); // Load saved locations on initialization
+    loadSavedLocations();
+    loadRecentSearches();
   }
 
   // --- Getters ---
   List<LocationData> get filteredLocations => _filteredLocations;
   List<LocationData> get savedLocations => _savedLocations;
+  List<LocationData> get recentSearches => _recentSearches;
 
   bool isLocationSaved(LocationData location) {
     return _savedLocations.any((saved) => saved.name == location.name);
@@ -36,13 +47,22 @@ class LocationSearchState extends ChangeNotifier {
   LocationData? getLocationDataByName(String? name) {
     if (name == null) return null;
     try {
-      return _savedLocations.firstWhere((loc) => loc.name == name);
+      // First, try to find in saved locations for full data
+      final savedLocation = _savedLocations.firstWhere((loc) => loc.name == name);
+      return savedLocation;
     } catch (e) {
-      final coords = TaiwanTownshipCoordinate[name.replaceAll(' ', '')];
-      if (coords != null) {
-        return LocationData(name: name, latitude: coords['latitude'], longitude: coords['longitude']);
+      // If not in saved, try to find in recent searches
+      try {
+        final recentLocation = _recentSearches.firstWhere((loc) => loc.name == name);
+        return recentLocation;
+      } catch (e) {
+        // If not found anywhere, create a new one from all coordinates
+        final coords = TaiwanTownshipCoordinate[name.replaceAll(' ', '')];
+        if (coords != null) {
+          return LocationData(name: name, latitude: coords['latitude'], longitude: coords['longitude']);
+        }
+        return null;
       }
-      return null;
     }
   }
 
@@ -84,6 +104,24 @@ class LocationSearchState extends ChangeNotifier {
     await _removeLocationUseCase(location.name);
     notifyListeners();
   }
+  
+  // --- Methods for Recent Searches ---
+  Future<void> loadRecentSearches() async {
+    _recentSearches = await _getRecentSearchesUseCase();
+    notifyListeners();
+  }
+
+  Future<void> addRecentSearch(LocationData location) async {
+    await _saveRecentSearchUseCase(location);
+    // Optimistic update
+    _recentSearches.removeWhere((l) => l.name == location.name);
+    _recentSearches.insert(0, location);
+    if (_recentSearches.length > 5) {
+      _recentSearches = _recentSearches.sublist(0, 5);
+    }
+    notifyListeners();
+  }
+
 
   // --- Public Methods for Searching ---
   void searchLocations(String query) {
@@ -129,22 +167,7 @@ class LocationSearchState extends ChangeNotifier {
   }
 
   // --- Static Data ---
-  final List<String> _popularLocationsData = const [
-    '臺北市 信義區', '高雄市 前鎮區', '新北市 板橋區', 
-    '桃園市 桃園區', '臺中市 西區', '臺南市 安平區',
-  ];
-  
-  List<LocationData> get popularLocations {
-    return _popularLocationsData.map((name) {
-      final coords = TaiwanTownshipCoordinate[name.replaceAll(' ', '')];
-      return LocationData(
-        name: name,
-        latitude: coords?['latitude'],
-        longitude: coords?['longitude'],
-      );
-    }).toList();
-  }
-
+  // FIX: Removed duplicate entries from the list.
   final List<String> _allLocations = const [
     '臺北市 中正區', '臺北市 大同區', '臺北市 中山區', '臺北市 松山區', '臺北市 大安區', '臺北市 萬華區',
     '臺北市 信義區', '臺北市 士林區', '臺北市 北投區', '臺北市 內湖區', '臺北市 南港區', '臺北市 文山區',
@@ -191,9 +214,9 @@ class LocationSearchState extends ChangeNotifier {
     '南投縣 鹿谷鄉', '南投縣 中寮鄉', '南投縣 魚池鄉', '南投縣 國姓鄉', '南投縣 水里鄉', '南投縣 信義鄉',
     '南投縣 仁愛鄉',
     '雲林縣 斗六市', '雲林縣 斗南鎮', '雲林縣 虎尾鎮', '雲林縣 西螺鎮', '雲林縣 土庫鎮', '雲林縣 北港鎮',
-    '雲林縣 麥寮鄉', '雲林縣 東勢鄉', '雲林縣 褒忠鄉', '雲林縣 臺西鄉', '雲林縣 崙背鄉', '雲林縣 刺桐鄉',
-    '雲林縣 林內鄉', '雲林縣 古坑鄉', '雲林縣 大埤鄉', '雲林縣 莿桐鄉', '雲林縣 褒忠鄉', '雲林縣 元長鄉',
-    '雲林縣 四湖鄉', '雲林縣 口湖鄉', '雲林縣 水林鄉',
+    '雲林縣 麥寮鄉', '雲林縣 東勢鄉', '雲林縣 褒忠鄉', '雲林縣 臺西鄉', '雲林縣 崙背鄉', '雲林縣 莿桐鄉',
+    '雲林縣 林內鄉', '雲林縣 古坑鄉', '雲林縣 大埤鄉', '雲林縣 元長鄉', '雲林縣 四湖鄉', '雲林縣 口湖鄉', 
+    '雲林縣 水林鄉',
     '嘉義縣 太保市', '嘉義縣 朴子市', '嘉義縣 布袋鎮', '嘉義縣 大林鎮', '嘉義縣 民雄鄉', '嘉義縣 溪口鄉',
     '嘉義縣 新港鄉', '嘉義縣 六腳鄉', '嘉義縣 東石鄉', '嘉義縣 義竹鄉', '嘉義縣 鹿草鄉', '嘉義縣 水上鄉',
     '嘉義縣 中埔鄉', '嘉義縣 竹崎鄉', '嘉義縣 梅山鄉', '嘉義縣 番路鄉', '嘉義縣 大埔鄉', '嘉義縣 阿里山鄉',

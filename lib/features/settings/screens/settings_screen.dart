@@ -21,7 +21,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _notificationsEnabled = true;
   bool _isWeatherAlertEnabled = false;
   bool _isEveningForecastEnabled = false;
-  bool _isImminentRainEnabled = false; // State for imminent rain
+  bool _isImminentRainEnabled = false;
   TimeOfDay? _doNotDisturbStart;
   TimeOfDay? _doNotDisturbEnd;
 
@@ -116,9 +116,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
     });
 
     if (value) {
-      await _notificationHelper.requestNotificationPermission(context);
+      bool granted = await _notificationHelper.requestNotificationPermission(context);
+      if (granted) {
+        // Unify and enable all individual notifications
+        await _toggleWeatherAlert(true);
+        await _toggleEveningForecast(true);
+        await _toggleImminentRain(true);
+      } else {
+        // If permission is denied, ensure all states are false
+        setState(() => _notificationsEnabled = false);
+        if (_isWeatherAlertEnabled) await _toggleWeatherAlert(false);
+        if (_isEveningForecastEnabled) await _toggleEveningForecast(false);
+        if (_isImminentRainEnabled) await _toggleImminentRain(false);
+      }
     } else {
-      // If global notifications are turned off, also turn off all individual settings and cancel their tasks.
+      // If global notifications are disabled, turn off all individual settings and cancel their tasks.
       if (_isWeatherAlertEnabled) await _toggleWeatherAlert(false);
       if (_isEveningForecastEnabled) await _toggleEveningForecast(false);
       if (_isImminentRainEnabled) await _toggleImminentRain(false);

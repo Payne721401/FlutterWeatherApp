@@ -5,6 +5,9 @@ import '../../data/models/location_data.dart';
 import '../state/location_search_state.dart';
 import '../../../weather/presentation/state/weather_data_state.dart';
 
+// Enum to explicitly manage the view state
+enum SearchViewState { defaults, searching }
+
 class AddLocationScreen extends StatefulWidget {
   const AddLocationScreen({super.key});
 
@@ -13,21 +16,38 @@ class AddLocationScreen extends StatefulWidget {
 }
 
 class _AddLocationScreenState extends State<AddLocationScreen> {
-  late LocationSearchState _locationSearchState;
+  final FocusNode _focusNode = FocusNode();
+  SearchViewState _viewState = SearchViewState.defaults;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<LocationSearchState>().searchController.clear();
-      context.read<LocationSearchState>().clearFilteredLocations();
     });
   }
-
+  
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _locationSearchState = context.watch<LocationSearchState>();
+  void dispose() {
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  void _switchToSearch() {
+    if (_viewState != SearchViewState.searching) {
+      setState(() {
+        _viewState = SearchViewState.searching;
+      });
+    }
+  }
+
+  void _switchToDefault() {
+    if (_viewState != SearchViewState.defaults) {
+      setState(() {
+        _viewState = SearchViewState.defaults;
+        FocusScope.of(context).unfocus();
+      });
+    }
   }
 
   Future<void> _toggleFavorite(LocationData location) async {
@@ -49,14 +69,17 @@ class _AddLocationScreenState extends State<AddLocationScreen> {
         );
       }
     }
+    // After toggling, force a rebuild to update the icon state
+    setState(() {});
   }
 
   Future<void> _selectLocationAndGoBack(LocationData location) async {
+    final locationSearchState = context.read<LocationSearchState>();
     final weatherDataState = context.read<WeatherDataState>();
-    context.read<LocationSearchState>().clearFilteredLocations();
-    context.read<LocationSearchState>().searchController.clear();
     
+    await locationSearchState.addRecentSearch(location);
     await weatherDataState.fetchDataForSearchedLocation(location); 
+    
     if (mounted) {
       Navigator.of(context).popUntil(ModalRoute.withName('/home'));
     }
@@ -64,12 +87,6 @@ class _AddLocationScreenState extends State<AddLocationScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final weatherDataState = context.read<WeatherDataState>();
-    final currentLocationName = weatherDataState.currentLocationName;
-    
-    final currentLocationData = context.read<LocationSearchState>().getLocationDataByName(currentLocationName);
-    final currentLocation = currentLocationData ?? (currentLocationName != null ? LocationData(name: currentLocationName) : null);
-
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
@@ -77,114 +94,184 @@ class _AddLocationScreenState extends State<AddLocationScreen> {
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text('搜尋地點'),
+        title: const Text('新增地點'),
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
         elevation: 0,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Material(
-              elevation: 1.0,
-              borderRadius: BorderRadius.circular(30.0),
-              color: Colors.white,
-              child: TextField(
-                controller: _locationSearchState.searchController,
-                onChanged: (query) {
-                  _locationSearchState.searchLocations(query);
-                },
-                decoration: InputDecoration(
-                  hintText: '查找位置...',
-                  prefixIcon: Icon(Icons.search, color: Colors.grey[600]),
-                  border: InputBorder.none,
-                  filled: true,
-                  fillColor: Colors.transparent,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                  isDense: true,
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            if (_locationSearchState.filteredLocations.isNotEmpty)
+      body: GestureDetector(
+        onTap: _switchToDefault,
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildSearchBar(context),
+              const SizedBox(height: 24),
               Expanded(
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: _locationSearchState.filteredLocations.length,
-                  itemBuilder: (context, index) {
-                    final location = _locationSearchState.filteredLocations[index];
-                    final isAlreadySaved = _locationSearchState.isLocationSaved(location);
-                    return LocationSearchItem(
+                child: _buildContent(),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSearchBar(BuildContext context) {
+    final locationSearchState = context.read<LocationSearchState>();
+    return Material(
+      elevation: 1.0,
+      borderRadius: BorderRadius.circular(30.0),
+      color: Colors.white,
+      child: TextField(
+        controller: locationSearchState.searchController,
+        focusNode: _focusNode,
+        onTap: _switchToSearch,
+        onChanged: (query) {
+           locationSearchState.searchLocations(query);
+        },
+        decoration: InputDecoration(
+          hintText: '查詢地點...',
+          prefixIcon: Icon(Icons.search, color: Colors.grey[600]),
+          border: InputBorder.none,
+          filled: true,
+          fillColor: Colors.transparent,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          isDense: true,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildContent() {
+    final locationSearchState = context.watch<LocationSearchState>();
+    final query = locationSearchState.searchController.text;
+
+    if (_viewState == SearchViewState.searching) {
+      if (query.isNotEmpty) {
+        return _buildSearchResults(locationSearchState);
+      } else {
+        return _buildRecentSearches(locationSearchState);
+      }
+    } else {
+      return _buildDefaultView(context);
+    }
+  }
+  
+  Widget _buildDefaultView(BuildContext context) {
+    final weatherDataState = context.watch<WeatherDataState>();
+    final locationSearchState = context.watch<LocationSearchState>();
+    
+    final currentLocationName = weatherDataState.currentLocationName;
+    final currentLocationData = locationSearchState.getLocationDataByName(currentLocationName);
+
+    return ListView(
+      children: [
+        _buildSectionHeader('現在地點', Icons.my_location, Colors.blue),
+        const SizedBox(height: 8),
+        if (currentLocationData != null)
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: LocationSearchItem(
+              location: currentLocationData,
+              onSelect: _selectLocationAndGoBack,
+              onToggleFavorite: _toggleFavorite,
+              isSaved: locationSearchState.isLocationSaved(currentLocationData),
+            ),
+          ),
+        const SizedBox(height: 24),
+
+        _buildSectionHeader('我的最愛', Icons.favorite, Colors.red),
+        const SizedBox(height: 8),
+        if (locationSearchState.savedLocations.isEmpty)
+          const Center(child: Padding(
+            padding: EdgeInsets.all(16.0),
+            child: Text('點擊愛心收藏地點'),
+          ))
+        else
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              children: locationSearchState.savedLocations.map((location) {
+                return Column(
+                  children: [
+                    LocationSearchItem(
                       location: location,
                       onSelect: _selectLocationAndGoBack,
                       onToggleFavorite: _toggleFavorite,
-                      isSaved: isAlreadySaved,
-                    );
-                  },
-                ),
-              )
-            else
-              Expanded(
-                child: ListView(
-                  children: [
-                    _buildSectionHeader('現在地點', Icons.location_on, Colors.blue),
-                    const SizedBox(height: 8),
-                    if (currentLocation != null)
-                      // MODIFICATION: Replaced LocationCurrentItem with a styled LocationSearchItem
-                      Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: LocationSearchItem(
-                          location: currentLocation,
-                          onSelect: _selectLocationAndGoBack,
-                          onToggleFavorite: _toggleFavorite,
-                          isSaved: _locationSearchState.isLocationSaved(currentLocation),
-                        ),
-                      ),
-                    const SizedBox(height: 24),
-                    _buildSectionHeader('熱門位置', Icons.whatshot, Colors.deepOrange),
-                    const SizedBox(height: 8),
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Column(
-                        children: _locationSearchState.popularLocations.map((location) {
-                          final isAlreadySaved = _locationSearchState.isLocationSaved(location);
-                          return Column(
-                            children: [
-                              LocationSearchItem(
-                                location: location,
-                                onSelect: _selectLocationAndGoBack,
-                                onToggleFavorite: _toggleFavorite,
-                                isSaved: isAlreadySaved,
-                              ),
-                              if (location != _locationSearchState.popularLocations.last)
-                                const Divider(height: 1, indent: 16, endIndent: 16),
-                            ],
-                          );
-                        }).toList(),
-                      ),
+                      isSaved: true,
                     ),
+                    if (location != locationSearchState.savedLocations.last)
+                      const Divider(height: 1, indent: 16, endIndent: 16),
                   ],
-                ),
-              ),
-          ],
+                );
+              }).toList(),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildSearchResults(LocationSearchState locationSearchState) {
+    if (locationSearchState.filteredLocations.isEmpty) {
+      return const Center(child: Text('找不到符合的地點'));
+    }
+    return ListView.builder(
+      itemCount: locationSearchState.filteredLocations.length,
+      itemBuilder: (context, index) {
+        final location = locationSearchState.filteredLocations[index];
+        final isSaved = locationSearchState.isLocationSaved(location);
+        return LocationSearchItem(
+          key: ValueKey(location.name),
+          location: location,
+          onSelect: _selectLocationAndGoBack,
+          onToggleFavorite: _toggleFavorite,
+          isSaved: isSaved,
+        );
+      },
+    );
+  }
+
+  Widget _buildRecentSearches(LocationSearchState locationSearchState) {
+    if (locationSearchState.recentSearches.isEmpty) {
+      return const Center(child: Text('沒有最近搜尋紀錄'));
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader('最近搜尋', Icons.history, Colors.orange),
+        const SizedBox(height: 8),
+        Expanded(
+          child: ListView.builder(
+            itemCount: locationSearchState.recentSearches.length,
+            itemBuilder: (context, index) {
+              final location = locationSearchState.recentSearches[index];
+              final isSaved = locationSearchState.isLocationSaved(location);
+              return LocationSearchItem(
+                key: ValueKey(location.name),
+                location: location,
+                onSelect: _selectLocationAndGoBack,
+                onToggleFavorite: _toggleFavorite,
+                isSaved: isSaved,
+              );
+            },
+          ),
         ),
-      ),
+      ],
     );
   }
 
   Widget _buildSectionHeader(String title, IconData icon, Color color) {
     return Row(
       children: [
-        Icon(icon, color: color),
+        Icon(icon, color: color, size: 20),
         const SizedBox(width: 8),
         Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500)),
       ],
@@ -208,7 +295,6 @@ class LocationSearchItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // MODIFICATION: Swapped title and subtitle logic
     final parts = location.name.split(' ');
     final district = parts.length > 1 ? parts.sublist(1).join(' ') : parts.first;
     final city = parts.length > 1 ? parts.first : '';
@@ -225,11 +311,12 @@ class LocationSearchItem extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // MODIFICATION: District is now the main title
-                    Text(district, style: const TextStyle(fontSize: 16.0, color: Colors.black87, fontWeight: FontWeight.bold)),
-                    // MODIFICATION: City is now the subtitle
+                    Text(district, style: const TextStyle(fontSize: 16.0, color: Colors.black87, fontWeight: FontWeight.w500)),
                     if (city.isNotEmpty)
-                      Text(city, style: const TextStyle(fontSize: 14.0, color: Colors.grey)),
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2.0),
+                        child: Text(city, style: const TextStyle(fontSize: 14.0, color: Colors.grey)),
+                      ),
                   ],
                 ),
               ),

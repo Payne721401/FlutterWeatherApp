@@ -53,7 +53,7 @@ class WeeklyForecastCard extends StatelessWidget {
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: SizedBox(
-                height: 280,
+                height:280, // MODIFIED: Increased total height
                 width: totalScrollableWidth,
                 child: Stack(
                   children: [
@@ -64,10 +64,16 @@ class WeeklyForecastCard extends StatelessWidget {
                         return _DailyForecastColumn(forecast: forecast);
                       }).toList(),
                     ),
-                    _buildWeeklyTemperatureChart(
-                      context,
-                      dailyForecasts,
-                      totalScrollableWidth,
+                    Positioned(
+                      top: 120,     // MODIFIED: Increased top whitespace
+                      bottom: 70,   // MODIFIED: Increased bottom whitespace
+                      left: 0,
+                      right: 0,
+                      child: _buildWeeklyTemperatureChart(
+                        context,
+                        dailyForecasts,
+                        totalScrollableWidth,
+                      ),
                     ),
                   ],
                 ),
@@ -98,7 +104,6 @@ class _DailyForecastColumn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // MODIFIED: Changed icon size from 35.0 to 30.0
     const double iconSize = 30.0;
 
     final dayIconPath = _getIconAssetPath(forecast.dayIconCode, isNight: false);
@@ -127,12 +132,12 @@ class _DailyForecastColumn extends StatelessWidget {
           const SizedBox(height: 15),
           Text(
             '${forecast.dayTempHigh.round()}°',
-            style: const TextStyle(fontSize: 16, color: Colors.deepOrange, fontWeight: FontWeight.bold),
+            style: const TextStyle(fontSize: 16, color: Color(0xFFFF8C00), fontWeight: FontWeight.bold),
           ),
-          const SizedBox(height: 70),
+          const Spacer(),
           Text(
             '${forecast.dayTempLow.round()}°', 
-            style: const TextStyle(fontSize: 16, color: Colors.blue, fontWeight: FontWeight.bold),
+            style: const TextStyle(fontSize: 16, color: Color(0xFF64abed), fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 15),
           if (forecast.nightIconCode != null)
@@ -150,7 +155,6 @@ class _DailyForecastColumn extends StatelessWidget {
   }
 }
 
-// Temperature chart widget remains unchanged
 Widget _buildWeeklyTemperatureChart(
   BuildContext context,
   List<DailyForecast> dailyForecasts,
@@ -189,68 +193,59 @@ Widget _buildWeeklyTemperatureChart(
     return FlSpot(xPosition, forecast.dayTempLow.toDouble());
   }).toList();
 
-  const double chartTopOffset = 125.0;
-  const double chartHeight = 70.0;
-
-  return Positioned(
-    top: chartTopOffset,
-    left: 0,
-    width: totalChartWidth,
-    height: chartHeight,
-    child: LineChart(
-      LineChartData(
-        gridData: const FlGridData(show: false),
-        titlesData: const FlTitlesData(
-          leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          bottomTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-        ),
-        borderData: FlBorderData(show: false),
-        lineTouchData: const LineTouchData(enabled: false),
-        lineBarsData: [
-          LineChartBarData(
-            spots: highTempSpots,
-            isCurved: true,
-            color: Colors.deepOrange,
-            barWidth: 2,
-            dotData: FlDotData(
-              show: true,
-              getDotPainter: (spot, percent, bar, index) {
-                return FlDotCirclePainter(
-                  radius: 4,
-                  color: Colors.deepOrange,
-                  strokeColor: Colors.white,
-                  strokeWidth: 2,
-                );
-              },
-            ),
-            belowBarData: BarAreaData(show: false),
-          ),
-          LineChartBarData(
-            spots: lowTempSpots,
-            isCurved: true,
-            color: Colors.blue,
-            barWidth: 2,
-            dotData: FlDotData(
-              show: true,
-              getDotPainter: (spot, percent, bar, index) {
-                return FlDotCirclePainter(
-                  radius: 4,
-                  color: Colors.blue,
-                  strokeColor: Colors.white,
-                  strokeWidth: 2,
-                );
-              },
-            ),
-            belowBarData: BarAreaData(show: false),
-          ),
-        ],
-        minY: effectiveMinTemp - _chartVerticalPadding,
-        maxY: effectiveMaxTemp + _chartVerticalPadding,
-        minX: 0,
-        maxX: totalChartWidth,
+  return LineChart(
+    LineChartData(
+      gridData: const FlGridData(show: false),
+      titlesData: const FlTitlesData(
+        leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+        rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+        topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+        bottomTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
       ),
+      borderData: FlBorderData(show: false),
+      lineTouchData: const LineTouchData(enabled: false),
+      lineBarsData: [
+        LineChartBarData(
+          spots: highTempSpots,
+          isCurved: true,
+          color: Color(0xFFFF8C00),
+          barWidth: 2,
+          dotData: FlDotData(
+            show: true,
+            getDotPainter: (spot, percent, bar, index) {
+              return FlDotCirclePainter(
+                radius: 4,
+                color: Color(0xFFFF8C00),
+                strokeColor: Colors.white,
+                strokeWidth: 1, // MODIFIED: Changed from 2 to 1 for consistency
+              );
+            },
+          ),
+          belowBarData: BarAreaData(show: false),
+        ),
+        LineChartBarData(
+          spots: lowTempSpots,
+          isCurved: true,
+          color: Color(0xFF64abed),
+          barWidth: 2,
+          dotData: FlDotData(
+            show: true,
+            getDotPainter: (spot, percent, bar, index) {
+              return FlDotCirclePainter(
+                radius: 4,
+                color: Color(0xFF64abed),
+                strokeColor: Colors.white,
+                strokeWidth: 1,
+              );
+            },
+          ),
+          belowBarData: BarAreaData(show: false),
+        ),
+      ],
+      minY: effectiveMinTemp - _chartVerticalPadding,
+      maxY: effectiveMaxTemp + _chartVerticalPadding,
+      minX: 0,
+      maxX: totalChartWidth,
     ),
   );
 }

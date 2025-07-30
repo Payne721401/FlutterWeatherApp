@@ -13,12 +13,28 @@ class LocationRepositoryImpl implements LocationRepository {
   }
 
   @override
-  Future<void> saveLocation(LocationData location) {
-    return _locationStorageService.saveLocation(location);
+  Future<void> saveLocation(LocationData location) async {
+    final savedLocations = await getSavedLocations();
+    if (!savedLocations.any((l) => l.name == location.name)) {
+      savedLocations.add(location);
+      await _locationStorageService.saveLocations(savedLocations);
+    }
   }
 
   @override
-  Future<void> removeLocation(String locationName) {
-    return _locationStorageService.removeLocation(locationName);
+  Future<void> removeLocation(String locationName) async {
+    final savedLocations = await getSavedLocations();
+    savedLocations.removeWhere((l) => l.name == locationName);
+    await _locationStorageService.saveLocations(savedLocations);
+  }
+
+  @override
+  Future<List<LocationData>> getRecentSearches() {
+    return _locationStorageService.getRecentSearches();
+  }
+
+  @override
+  Future<void> saveRecentSearch(LocationData location) {
+    return _locationStorageService.saveRecentSearch(location);
   }
 }

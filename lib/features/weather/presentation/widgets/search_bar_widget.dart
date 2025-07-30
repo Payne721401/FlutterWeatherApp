@@ -4,7 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../state/weather_data_state.dart';
 import '../../data/models/weather_alert.dart';
-import '../../../location/presentation/screens/manage_saved_locations_screen.dart';
+import '../../../location/presentation/screens/add_location_screen.dart';
 
 class SearchBarWidget extends StatelessWidget {
   const SearchBarWidget({super.key});
@@ -14,34 +14,35 @@ class SearchBarWidget extends StatelessWidget {
     final weatherDataState = context.watch<WeatherDataState>();
     final alerts = weatherDataState.alerts;
 
+    // Use selectedLocationName for display, fallback to a prompt
+    final locationNameToDisplay = weatherDataState.selectedLocationName ?? '查找或管理地點...';
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
-      // MODIFICATION: Use a Stack to handle true centering while accommodating the right-aligned icon.
       child: SizedBox(
-        height: 48, // Give the Stack a defined height for vertical alignment.
+        height: 48, 
         child: Stack(
           alignment: Alignment.center,
           children: [
-            // Layer 1: The centered, clickable location text and icon.
             Center(
               child: InkWell(
                 onTap: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => const ManageSavedLocationsScreen()),
+                    MaterialPageRoute(builder: (context) => const AddLocationScreen()),
                   );
                 },
                 borderRadius: BorderRadius.circular(8.0),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 12.0),
                   child: Row(
-                    mainAxisSize: MainAxisSize.min, // Important: This makes the row only as wide as its children.
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(Icons.search, size: 28.0, color: Colors.black87),
                       const SizedBox(width: 8.0),
-                      Flexible( // Use Flexible to prevent long text from causing overflow.
+                      Flexible(
                         child: Text(
-                          weatherDataState.currentLocationName ?? '查找或管理地點...',
+                          locationNameToDisplay,
                           style: TextStyle(fontSize: 20.0, fontWeight: FontWeight.bold, color: Colors.grey[800]),
                           overflow: TextOverflow.ellipsis,
                           textAlign: TextAlign.center,
@@ -52,7 +53,6 @@ class SearchBarWidget extends StatelessWidget {
                 ),
               ),
             ),
-            // Layer 2: The alert icon, aligned to the far right of the Stack.
             Align(
               alignment: Alignment.centerRight,
               child: (alerts.isNotEmpty)
@@ -90,7 +90,6 @@ class SearchBarWidget extends StatelessWidget {
                         )
                       ],
                     )
-                  // Use a SizedBox with the same width as the IconButton to maintain spacing.
                   : const SizedBox(width: 48), 
             ),
           ],

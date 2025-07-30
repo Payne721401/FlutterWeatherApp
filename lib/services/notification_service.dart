@@ -4,6 +4,7 @@ import 'dart:developer';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz;
+import 'package:shared_preferences/shared_preferences.dart';
 
 // Defines unique IDs for different notification types
 class NotificationIds {
@@ -18,14 +19,11 @@ class NotificationService {
       FlutterLocalNotificationsPlugin();
 
   Future<void> init() async {
-    // Initialize time zones for accurate scheduling
     tz.initializeTimeZones();
 
-    // Android specific initialization settings
     const AndroidInitializationSettings initializationSettingsAndroid =
         AndroidInitializationSettings('@mipmap/ic_launcher');
 
-    // iOS specific initialization settings
     const DarwinInitializationSettings initializationSettingsIOS =
         DarwinInitializationSettings(
       requestAlertPermission: true,
@@ -33,14 +31,12 @@ class NotificationService {
       requestSoundPermission: true,
     );
 
-    // General initialization settings for all platforms
     const InitializationSettings initializationSettings =
         InitializationSettings(
       android: initializationSettingsAndroid,
       iOS: initializationSettingsIOS,
     );
 
-    // Initialize the plugin
     await _flutterLocalNotificationsPlugin.initialize(
       initializationSettings,
       onDidReceiveNotificationResponse: (NotificationResponse response) async {
@@ -49,13 +45,40 @@ class NotificationService {
     );
   }
 
-  // Method to display a simple, immediate notification
+  // Helper method to check if Do Not Disturb is active
+  Future<bool> _isDoNotDisturbActive() async {
+    final prefs = await SharedPreferences.getInstance();
+    final int? startMinutes = prefs.getInt('doNotDisturbStartMinutes');
+    final int? endMinutes = prefs.getInt('doNotDisturbEndMinutes');
+
+    if (startMinutes == null || endMinutes == null) {
+      return false; // DND not set up
+    }
+
+    final now = DateTime.now();
+    final currentTimeInMinutes = now.hour * 60 + now.minute;
+
+    if (startMinutes <= endMinutes) {
+      // DND within the same day (e.g., 09:00 - 17:00)
+      return currentTimeInMinutes >= startMinutes && currentTimeInMinutes < endMinutes;
+    } else {
+      // DND crosses midnight (e.g., 23:00 - 07:00)
+      return currentTimeInMinutes >= startMinutes || currentTimeInMinutes < endMinutes;
+    }
+  }
+
+  // Modified: showNotification now respects DND
   Future<void> showNotification({
     required int id,
     required String title,
     required String body,
     String? payload,
   }) async {
+    if (await _isDoNotDisturbActive()) {
+      log('Notification (ID: $id) suppressed due to Do Not Disturb period.', name: 'NotificationService');
+      return; // Suppress notification
+    }
+
     const NotificationDetails platformChannelSpecifics =
         NotificationDetails(
           android: AndroidNotificationDetails(
@@ -78,7 +101,7 @@ class NotificationService {
     );
   }
 
-  // Method to schedule a notification at a specific time daily
+  // scheduleDailyNotification logic remains the same; DND check happens at the moment of showing.
   Future<void> scheduleDailyNotification({
     required int id,
     required String title,
@@ -121,15 +144,11 @@ class NotificationService {
       scheduledDate,
       platformChannelSpecifics,
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      // CORRECTED: The parameter is part of the platform-specific details, not a top-level parameter.
-      // We will rely on the default interpretation for now which works for most cases.
-      // For more complex iOS scheduling, uiLocalNotificationDateInterpretation would be set inside DarwinNotificationDetails.
       matchDateTimeComponents: DateTimeComponents.time,
       payload: payload,
     );
   }
 
-  // Method to cancel a specific notification by its ID
   Future<void> cancelNotification(int id) async {
     await _flutterLocalNotificationsPlugin.cancel(id);
   }

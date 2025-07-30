@@ -37,8 +37,13 @@ class WeatherDataState extends ChangeNotifier {
   // --- State Variables ---
   bool _isLoading = false;
   String? _error;
-  String? _currentLocationName;
   
+  // --- Location Name Management ---
+  // The true location based on GPS, updated only by `fetchDataForCurrentLocation`.
+  String? _currentLocationName; 
+  // The location currently being displayed in the UI, can be GPS or a searched location.
+  String? _selectedLocationName; 
+
   // Data models for UI
   AirQuality? _airQuality;
   UVIndexData? _uvIndex;
@@ -62,7 +67,12 @@ class WeatherDataState extends ChangeNotifier {
   // --- Getters ---
   bool get isLoading => _isLoading;
   String? get error => _error;
-  String? get currentLocationName => _currentLocationName;
+  
+  // Getter for the true GPS location.
+  String? get currentLocationName => _currentLocationName; 
+  // Getter for the location displayed on the home screen.
+  String? get selectedLocationName => _selectedLocationName; 
+
   AirQuality? get airQuality => _airQuality;
   UVIndexData? get uvIndex => _uvIndex;
   ObservationData? get observation => _observation;
@@ -103,8 +113,10 @@ class WeatherDataState extends ChangeNotifier {
       final position = await _locationService.getCurrentLocation();
       final adminDivision = await _locationService.getAdministrativeDivision(position.latitude, position.longitude);
       if (adminDivision != null) {
+        // When fetching for current location, both should be updated.
         _currentLocationName = adminDivision;
-        // Pass the precise coordinates for observation data
+        _selectedLocationName = adminDivision; 
+        
         await _fetchAllData(
           adminDivision.replaceAll(' ', '_'), 
           latitude: position.latitude, 
@@ -129,10 +141,10 @@ class WeatherDataState extends ChangeNotifier {
 
   Future<void> fetchDataForSearchedLocation(LocationData locationData) async {
     _isLoading = true;
-    _currentLocationName = locationData.name;
+    // When fetching for a searched location, only update the selected location.
+    _selectedLocationName = locationData.name; 
     notifyListeners();
     try {
-      // Pass both the name for forecast and coordinates for observation
       await _fetchAllData(
         locationData.name.replaceAll(' ', '_'), 
         latitude: locationData.latitude, 
@@ -156,7 +168,6 @@ class WeatherDataState extends ChangeNotifier {
       final results = await Future.wait([
         _forecastRepository.getForecastData(locationId, forceRefresh: forceRefresh),
         _sunriseSunsetRepository.getSunriseSunset(countyName, forceRefresh: forceRefresh),
-        // Pass coordinates to observation repositories
         _airQualityRepository.getNearestAirQuality(latitude: latitude, longitude: longitude, forceRefresh: forceRefresh),
         _uvIndexRepository.getNearestUVIndex(latitude: latitude, longitude: longitude, forceRefresh: forceRefresh),
         _observationRepository.getNearestObservation(latitude: latitude, longitude: longitude, forceRefresh: forceRefresh),

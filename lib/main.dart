@@ -21,6 +21,8 @@ import 'features/location/data/repositories/location_repository_impl.dart';
 import 'features/location/domain/usecases/get_saved_locations_usecase.dart';
 import 'features/location/domain/usecases/save_location_usecase.dart';
 import 'features/location/domain/usecases/remove_location_usecase.dart';
+import 'features/location/domain/usecases/get_recent_searches_usecase.dart';
+import 'features/location/domain/usecases/save_recent_search_usecase.dart';
 
 import 'features/radar/data/services/radar_forecast_service.dart';
 
@@ -91,11 +93,14 @@ void main() async {
 
   final appDependencies = AppDependencies();
 
+  // --- Location Feature Dependencies ---
   final locationStorageService = LocationStorageService();
   final locationRepository = LocationRepositoryImpl(locationStorageService);
   final getSavedLocationsUseCase = GetSavedLocationsUseCase(locationRepository);
   final saveLocationUseCase = SaveLocationUseCase(locationRepository);
   final removeLocationUseCase = RemoveLocationUseCase(locationRepository);
+  final getRecentSearchesUseCase = GetRecentSearchesUseCase(locationRepository);
+  final saveRecentSearchUseCase = SaveRecentSearchUseCase(locationRepository);
 
   runApp(
     MultiProvider(
@@ -106,6 +111,8 @@ void main() async {
             getSavedLocationsUseCase: getSavedLocationsUseCase,
             saveLocationUseCase: saveLocationUseCase,
             removeLocationUseCase: removeLocationUseCase,
+            getRecentSearchesUseCase: getRecentSearchesUseCase,
+            saveRecentSearchUseCase: saveRecentSearchUseCase,
           ),
         ),
         ChangeNotifierProvider(
