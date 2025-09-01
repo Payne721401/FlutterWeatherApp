@@ -1,23 +1,51 @@
 import 'dart:developer' as dev;
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-
-import 'package:myapp/services/notification_service.dart';
-import 'package:myapp/services/location_service.dart';
-import 'package:myapp/features/radar/data/models/rainfall_data.dart';
-import 'package:myapp/features/radar/utils/rainfall_calculator.dart';
-import 'package:myapp/utils/app_constants.dart'; // Import the new constants file
+import 'package:weatherpro/services/notification_service.dart';
+import 'package:weatherpro/services/location_service.dart';
+import 'package:weatherpro/features/radar/data/models/rainfall_data.dart';
+import 'package:weatherpro/features/radar/utils/rainfall_calculator.dart';
+import 'package:weatherpro/utils/app_constants.dart';
+import 'package:weatherpro/features/settings/domain/repositories/notification_settings_repository.dart';
 
 class ImminentRainTaskHandler {
+  // --- START OF MODIFICATION ---
+  final NotificationService notificationService;
+  final LocationService locationService;
+  final http.Client httpClient; // Allow injecting a mock http client
+  final SharedPreferences? prefsForTesting;
+
+  ImminentRainTaskHandler()
+      : notificationService = NotificationService(),
+        locationService = LocationService(),
+        httpClient = http.Client(),
+        prefsForTesting = null;
+
+  @visibleForTesting
+  ImminentRainTaskHandler.testable({
+    required this.notificationService,
+    required this.locationService,
+    required this.httpClient,
+    required this.prefsForTesting,
+  });
+  // --- END OF MODIFICATION ---
+
   Future<bool> execute() async {
     const String logName = 'ImminentRainTask';
-    final notificationService = NotificationService();
+    
+    final prefs = prefsForTesting ?? await SharedPreferences.getInstance();
+    final bool isEnabled = prefs.getBool(NotificationSettingsRepository.imminentRainEnabledKey) ?? false;
+
+    if (!isEnabled) {
+      dev.log("Task skipped: Imminent rain alerts are disabled by the user.", name: logName);
+      return true;
+    }
+
     await notificationService.init();
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      // Use the shared constant key to retrieve the URL
       final String? radarUrl = prefs.getString(radarRainfallUrlKey);
 
       if (radarUrl == null || radarUrl.isEmpty) {
@@ -25,7 +53,6 @@ class ImminentRainTaskHandler {
         return true;
       }
       
-      final locationService = LocationService();
       final position = await locationService.getCurrentLocation();
       final adminDivision = await locationService.getAdministrativeDivision(
           position.latitude, position.longitude);
@@ -35,7 +62,8 @@ class ImminentRainTaskHandler {
         return true;
       }
       
-      final response = await http.get(Uri.parse(radarUrl));
+      // Use the injected http.Client for network requests
+      final response = await httpClient.get(Uri.parse(radarUrl));
       if (response.statusCode != 200) {
         dev.log("Failed to fetch rainfall data. Status: ${response.statusCode}", name: logName);
         return false;

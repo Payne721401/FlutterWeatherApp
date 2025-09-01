@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart'; // Added for SnackBar
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:flutter/foundation.dart';
 
 class NotificationHelper {
   final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin;
@@ -9,6 +10,7 @@ class NotificationHelper {
   NotificationHelper(this.flutterLocalNotificationsPlugin);
 
   Future<void> initNotifications() async {
+    if (kIsWeb) return;
     const AndroidInitializationSettings initializationSettingsAndroid =
         AndroidInitializationSettings('app_icon'); // Replace with your app icon name
 
@@ -39,6 +41,7 @@ class NotificationHelper {
   }
 
   Future<bool> requestNotificationPermission(BuildContext context) async {
+    if (kIsWeb) return false;
     PermissionStatus status = await Permission.notification.status;
     if (status.isDenied) {
       status = await Permission.notification.request();
@@ -83,6 +86,7 @@ class NotificationHelper {
   }
 
   Future<void> cancelAllNotifications() async {
+    if (kIsWeb) return;
     await flutterLocalNotificationsPlugin.cancelAll();
   }
 }

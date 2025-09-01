@@ -1,6 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart'; // For TimeOfDay
-import 'package:myapp/features/settings/utils/time_format_util.dart'; // Adjust import path
+import 'package:weatherpro/features/settings/utils/time_format_util.dart'; // Adjust import path
 
 class NotificationSettingsSection extends StatelessWidget {
   final bool notificationsEnabled;
@@ -99,8 +99,7 @@ class NotificationSettingsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return CupertinoListSection.insetGrouped(
-      header: const Text('通知'), // TODO: Localize
+    return Column(
       children: <CupertinoListTile>[
         CupertinoListTile(
           title: const Text('開啟通知'), // TODO: Localize

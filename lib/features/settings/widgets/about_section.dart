@@ -1,25 +1,34 @@
 import 'package:flutter/cupertino.dart';
+import 'package:provider/provider.dart';
+
+import '../../../services/app_version_service.dart';
 
 class AboutSection extends StatelessWidget {
   const AboutSection({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return CupertinoListSection.insetGrouped(
-      header: const Text('關於'), // TODO: Localize
+    // --- MODIFICATION START: Get AppVersionService from Provider ---
+    final appVersionService = context.watch<AppVersionService>();
+    // --- MODIFICATION END ---
+
+    return Column(
       children: <CupertinoListTile>[
         CupertinoListTile(
-          title: const Text('版本'), // TODO: Localize
-          additionalInfo: const Text('1.0.0'), // TODO: Get from package_info
+          title: const Text('版本'),
+          // --- MODIFICATION START: Display dynamic version ---
+          additionalInfo: Text(appVersionService.appVersion),
+          // --- MODIFICATION END ---
           onTap: () {
-            /* Maybe show more details */
+            // You could show more details here, like the build number
+            // For example: Text('${appVersionService.appVersion} (${appVersionService.buildNumber})')
           },
         ),
         CupertinoListTile(
-          title: const Text('開發者資訊'), // TODO: Localize
+          title: const Text('開發者資訊'),
           trailing: const CupertinoListTileChevron(),
           onTap: () {
-            /* Navigate to developer info screen */
+            // TODO: Navigate to a developer info screen or open a URL
           },
         ),
       ],
