@@ -12,6 +12,7 @@ class NotificationIds {
   static const int eveningWeatherForecast = 101; // 明日天氣通知
   static const int imminentRain = 102; // 即將降雨通知
   static const int weatherAlert = 103; // 天氣警特報通知
+  static const int announcement = 104; // MODIFIED: Added for announcements
 }
 
 class NotificationService {
@@ -22,7 +23,7 @@ class NotificationService {
     tz.initializeTimeZones();
 
     const AndroidInitializationSettings initializationSettingsAndroid =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
+        AndroidInitializationSettings('@drawable/ic_notification');
 
     const DarwinInitializationSettings initializationSettingsIOS =
         DarwinInitializationSettings(
