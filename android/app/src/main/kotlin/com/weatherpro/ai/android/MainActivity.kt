@@ -1,6 +1,6 @@
 // android/app/src/main/java/com/example/myapp/MainActivity.kt
 
-package com.example.myapp
+package com.weatherpro.ai.android
 
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine

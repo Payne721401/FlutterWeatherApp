@@ -1,4 +1,4 @@
-name: myapp
+name: weatherpro
 description: "A new Flutter project."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
@@ -6,7 +6,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 
 # The following defines the version and build number for your application.
 # A version number is three numbers separated by dots, like 1.2.43
-# followed by an optional build number separated by a +.+
+# followed by an optional build number separated by a +.
 # Both the version and the builder number may be overridden in flutter
 # build by specifying --build-name and --build-number, respectively.
 # In Android, build-name is used as versionName while build-number used as versionCode.
@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.0+1
+version: 1.0.1+2
 
 environment:
   sdk: ^3.7.0-209.1.beta
@@ -37,19 +37,18 @@ dependencies:
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.+
   cupertino_icons: ^1.0.8
-  firebase_core: ^3.13.1
-  cloud_firestore: ^5.6.6
+  firebase_core: ^4.2.0
+  cloud_firestore: ^6.0.3
   intl: ^0.20.2
   provider: ^6.1.4
-  shared_preferences: ^2.5.3
   geolocator: ^14.0.1
   http: ^1.4.0
   material_color_utilities: ^0.11.1
-  fl_chart: ^1.0.0 # Added fl_chart for temperature graph
+  fl_chart: ^1.1.0 # Added fl_chart for temperature graph
   xml: ^6.3.0 # Added xml for parsing XML response
-  firebase_ai: ^2.0.0
-  firebase_auth: ^5.5.4
-  firebase_remote_config: ^5.4.7
+  firebase_ai: ^3.4.0
+  firebase_auth: ^6.1.1
+  firebase_remote_config: ^6.1.0
   google_generative_ai: ^0.4.7
   flutter_markdown: ^0.7.7+1
   webview_flutter: ^4.13.0 # Updated webview_flutter to match lock file
@@ -62,13 +61,31 @@ dependencies:
   permission_handler: ^12.0.0+1
   flutter_local_notifications: ^19.3.0
   dart_geohash: ^2.1.0
-  google_sign_in: ^7.0.0
+  google_sign_in: ^7.1.1
   sign_in_with_apple: ^7.0.1
   in_app_purchase: ^3.2.3
   timezone: ^0.10.1
   workmanager: ^0.7.0
   collection: ^1.19.1
   flutter_svg: ^2.2.0
+  equatable: ^2.0.7
+  flutter_bloc: ^9.1.1 # <-- MODIFIED to align with bloc_test
+  connectivity_plus: ^7.0.0
+  crypto: ^3.0.6
+  mocktail: ^1.0.4
+  firebase_messaging: ^16.0.3
+  badges: ^3.1.2
+  firebase_crashlytics: ^5.0.3
+  firebase_analytics: ^12.0.3
+  firebase_database: ^12.0.3
+  package_info_plus: ^9.0.0
+  firebase_app_check: ^0.4.1+1
+  freerasp: ^7.2.1
+  analyzer: ^8.1.1
+  shared_preferences: ^2.5.3
+  path_provider: ^2.1.5
+  url_launcher: ^6.3.2
+
 
 dev_dependencies:
   flutter_test:
@@ -80,6 +97,18 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.+
   flutter_lints: ^5.0.0
+  in_app_purchase_platform_interface: ^1.4.0
+  rename: ^3.1.0
+  bloc_test: ^10.0.0
+  mockito: ^5.5.1
+  build_runner: ^2.8.0 # <-- DOWNGRADED for compatibility with analyzer override
+  flutter_launcher_icons: ^0.14.4
+
+dependency_overrides:
+  # analyzer: '6.4.1'
+  test_api: '0.7.7'
+  vector_math: ^2.2.0
+  
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -95,6 +124,7 @@ flutter:
   # To add assets to your application, add an assets section, like this:
   assets:
     - assets/icons/
+    - lib/features/ai_assistant/assets/prompts/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
@@ -107,3 +137,9 @@ flutter:
   # "family" key with the font family name, and a "fonts" key with a
   # list giving the asset and other descriptors for the font. For
   # example:+
+
+flutter_launcher_icons:
+  android: "launcher_icon"    # Android 設定(使用 "launcher_icon.png" 作為檔名)
+  ios: true                     # iOS 設定(自動產生 iOS 圖示)
+  image_path: "assets/icons/app_logo.png"  
+  remove_alpha_ios: true   #圖示來源路徑
