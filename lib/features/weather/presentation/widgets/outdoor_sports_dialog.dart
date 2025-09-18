@@ -13,24 +13,24 @@ class OutdoorSportsDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     // Define color stops for outdoor sports parameters
     final feelsLikeColors = [
-      ColorStop(10.0, Colors.red), ColorStop(15.0, Colors.orange), ColorStop(20.0, Colors.yellow),
-      ColorStop(30.0, Colors.green), ColorStop(34.0, Colors.orange), ColorStop(double.infinity, Colors.red),
+      ColorStop(10.0, Colors.red.shade400), ColorStop(15.0, Colors.orange.shade400), ColorStop(20.0, Colors.yellow.shade400),
+      ColorStop(30.0, Colors.green.shade400), ColorStop(34.0, Colors.orange.shade400), ColorStop(double.infinity, Colors.red.shade400),
     ];
     final windSpeedColors = [
-      ColorStop(2.0, Colors.green), ColorStop(4.0, Colors.yellow), ColorStop(6.0, Colors.orange),
-      ColorStop(double.infinity, Colors.red),
+      ColorStop(2.0, Colors.green.shade400), ColorStop(4.0, Colors.yellow.shade400), ColorStop(6.0, Colors.orange.shade400),
+      ColorStop(double.infinity, Colors.red.shade400),
     ];
     final aqiColors = [
-      ColorStop(50.0, Colors.green), ColorStop(100.0, Colors.yellow), ColorStop(150.0, Colors.orange),
-      ColorStop(double.infinity, Colors.red),
+      ColorStop(50.0, Colors.green.shade400), ColorStop(100.0, Colors.yellow.shade400), ColorStop(150.0, Colors.orange.shade400),
+      ColorStop(double.infinity, Colors.red.shade400),
     ];
     final precipitationColors = [
-      ColorStop(10.0, Colors.green), ColorStop(30.0, Colors.yellow), ColorStop(50.0, Colors.orange),
-      ColorStop(double.infinity, Colors.red),
+      ColorStop(10.0, Colors.green.shade400), ColorStop(30.0, Colors.yellow.shade400), ColorStop(50.0, Colors.orange.shade400),
+      ColorStop(double.infinity, Colors.red.shade400),
     ];
     final uvIndexColors = [
-      ColorStop(2.0, Colors.green), ColorStop(5.0, Colors.yellow), ColorStop(7.0, Colors.orange),
-      ColorStop(double.infinity, Colors.red),
+      ColorStop(2.0, Colors.green.shade400), ColorStop(5.0, Colors.yellow.shade400), ColorStop(7.0, Colors.orange.shade400),
+      ColorStop(double.infinity, Colors.red.shade400),
     ];
 
     // Calculate exercise advice using data from the new class
@@ -87,8 +87,8 @@ class OutdoorSportsDialog extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            _buildDetailItem(context, '體感溫度', Icons.thermostat_outlined, Colors.redAccent, data.feelsLike, 40.0, feelsLikeColors, '°C', (v) => getTemperatureForExerciseDescription(v)),
-            _buildDetailItem(context, '風速', Icons.wind_power, Colors.blueGrey, data.windSpeed, 7.0, windSpeedColors, ' 級', (v) => getWindLevelDescription(v)),
+            _buildDetailItem(context, '目前體感溫度', Icons.thermostat_outlined, Colors.redAccent, data.feelsLike, 50.0, feelsLikeColors, '°C', (v) => getTemperatureForExerciseDescription(v)),
+            _buildDetailItem(context, '目前風速', Icons.wind_power, Colors.blueGrey, data.windSpeed, 7.0, windSpeedColors, ' 級', (v) => getWindLevelDescription(v)),
             _buildDetailItem(context, '空氣品質(AQI)', Icons.air, Colors.teal, data.aqi.toDouble(), 200.0, aqiColors, '', (v) => getAQIDescription(v.toInt())),
             _buildDetailItem(context, '降雨機率', Icons.umbrella_outlined, Colors.grey, data.precipitationChance.toDouble(), 100.0, precipitationColors, '%', (v) => getPrecipitationDescription(v)),
             _buildDetailItem(context, '紫外線', Icons.wb_sunny, Colors.amber, data.uvIndex.toDouble(), 11.0, uvIndexColors, '', (v) => getUVIndexDescription(v.toInt())),
@@ -122,8 +122,16 @@ class OutdoorSportsDialog extends StatelessWidget {
                 width: double.infinity,
               ),
             ),
-            const SizedBox(width: 8),
-            Text('${value.toStringAsFixed(unit == "°C" ? 1 : 0)}$unit', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+            SizedBox(
+              width: 75.0,
+              child: Padding(
+                padding: const EdgeInsets.only(left: 8.0),
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: Text('${value.toStringAsFixed(unit == "°C" ? 1 : 0)}$unit', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 4),

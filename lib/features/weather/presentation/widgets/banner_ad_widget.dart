@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'dart:io' show Platform;
@@ -62,7 +64,7 @@ class _BannerAdWidgetState extends State<BannerAdWidget> {
             }
           },
           onAdFailedToLoad: (ad, err) {
-            print('BannerAd failed to load: ${err.message}');
+            log('BannerAd failed to load: ${err.message}');
             ad.dispose();
             if (!_isDisposed) {
               setState(() {
@@ -71,35 +73,35 @@ class _BannerAdWidgetState extends State<BannerAdWidget> {
               });
               if (_retryAttempt < _maxRetries) {
                 _retryAttempt++;
-                print('Retrying BannerAd load, attempt $_retryAttempt of $_maxRetries...');
+                log('Retrying BannerAd load, attempt $_retryAttempt of $_maxRetries...');
                 Future.delayed(Duration(seconds: _retryAttempt * 2), () { // Exponential back-off for retry
                   _loadAd();
                 });
               } else {
-                print('Max BannerAd retries reached. Stopping attempts.');
+                log('Max BannerAd retries reached. Stopping attempts.');
                 _retryAttempt = 0; // Reset for future attempts if triggered again
               }
             }
           },
-          onAdOpened: (Ad ad) => print('BannerAd opened.'),
-          onAdClosed: (Ad ad) => print('BannerAd closed.'),
-          onAdImpression: (Ad ad) => print('BannerAd impression.'),
+          onAdOpened: (Ad ad) => log('BannerAd opened.'),
+          onAdClosed: (Ad ad) => log('BannerAd closed.'),
+          onAdImpression: (Ad ad) => log('BannerAd impression.'),
           onPaidEvent: (Ad ad, double valueMicros, PrecisionType precision, String currencyCode) =>
-              print('BannerAd paidEvent: $valueMicros $precision $currencyCode'),
+              log('BannerAd paidEvent: $valueMicros $precision $currencyCode'),
         ),
       );
 
       _bannerAd!.load();
     } catch (e) {
-      print('Error creating banner ad: $e');
+      log('Error creating banner ad: $e');
       if (!_isDisposed && _retryAttempt < _maxRetries) {
         _retryAttempt++;
-        print('Retrying BannerAd load after error, attempt $_retryAttempt of $_maxRetries...');
+        log('Retrying BannerAd load after error, attempt $_retryAttempt of $_maxRetries...');
         Future.delayed(Duration(seconds: _retryAttempt * 2), () { // Exponential back-off for retry
           _loadAd();
         });
       } else if (!_isDisposed) {
-        print('Max BannerAd retries reached after error. Stopping attempts.');
+        log('Max BannerAd retries reached after error. Stopping attempts.');
         _retryAttempt = 0;
       }
     }

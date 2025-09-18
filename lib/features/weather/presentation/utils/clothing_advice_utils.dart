@@ -3,19 +3,19 @@ import 'package:flutter/material.dart';
 String generateOutfitSuggestion(double temp, double diff) {
   if (temp <= 10) return '厚外套';
   if (temp <= 15) {
-    return diff >= 8 ? '厚外套' : '長袖+外套';
+    return diff >= 10 ? '厚外套' : '長袖+外套';
   }
   if (temp <= 22) {
-    if (diff >= 8) return '長袖+外套';
+    if (diff >= 10) return '長袖+外套';
     if (diff >= 6) return '長袖+薄外套';
     return '長袖';
   }
   if (temp <= 27) {
-    if (diff >= 8) return '短袖+薄外套';
+    if (diff >= 10) return '短袖+薄外套';
     return '短袖';
   }
   // temp ≥ 28
-  if (diff >= 8) return '短袖+薄外套';
+  if (diff >= 10) return '短袖+薄外套';
   return '短袖';
 }
 
@@ -51,29 +51,28 @@ String getFeelsLikeDescription(double feelsLike) {
 }
 
 String getTempDiffDescription(double tempDiff) {
-  if (tempDiff < 3) {
+  if (tempDiff < 5) {
     return '溫差小';
-  } else if (tempDiff >= 3 && tempDiff <= 7) {
-    return '溫差普通';
+  } else if (tempDiff >= 5 && tempDiff < 10) {
+    return '溫差中等';
   } else {
     return '溫差大';
   }
 }
 
 Color getBackgroundColorForFeelsLike(double feelsLike) {
-    // Define color stops from cold (blue) to hot (orange-red)
-    // Values are approximate temperature points
+    // MODIFIED: Unified color logic to use shade200 and adjusted colors
     if (feelsLike <= 10) {
       return Colors.blue.shade200; // Very cold
     } else if (feelsLike <= 15) {
-      return Colors.blue.shade100; // Cold
+      return Colors.lightBlue.shade200; // Cold
     } else if (feelsLike <= 20) {
-      return Colors.lightBlue.shade100; // Cool
+      return Colors.green.shade200; // Cool
     } else if (feelsLike <= 25) {
-      return Colors.lightGreen.shade100; // Comfortable
+      return Colors.yellow.shade200; // Comfortable
     } else if (feelsLike <= 30) {
-      return Colors.orange.shade100; // Warm
+      return Colors.orange.shade200; // Warm
     } else {
-      return Colors.red.shade100; // Hot
+      return Colors.red.shade200; // Hot
     }
   }

@@ -30,22 +30,16 @@ class ParameterBarChart extends StatelessWidget {
     final clampedValue = value.clamp(0.0, maxValue);
     final percentage = clampedValue / maxValue;
 
-    // Find the appropriate color based on value and color stops
-    Color barColor = colorStops.isNotEmpty ? colorStops.first.color : Colors.grey; // Default to first color stop or grey
-    for (int i = 0; i < colorStops.length; i++) {
-      if (value <= colorStops[i].stop) {
-        barColor = colorStops[i].color;
+    // Find the appropriate color by iterating through the stops.
+    // Default to the last color in the list, for values exceeding all stops.
+    Color barColor = colorStops.last.color;
+    for (final stop in colorStops) {
+      // Find the first stop that the value is less than or equal to.
+      if (value <= stop.stop) {
+        barColor = stop.color;
         break;
-      } else if (i < colorStops.length - 1 && value < colorStops[i + 1].stop) {
-         // If value is between two stops, use the color of the lower stop
-         barColor = colorStops[i].color;
-         break;
       }
     }
-     // Handle case where value is greater than the last stop
-     if (colorStops.isNotEmpty && value > colorStops.last.stop) {
-       barColor = colorStops.last.color;
-     }
 
     return Container(
       width: width,

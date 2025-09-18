@@ -13,16 +13,16 @@ class ClothingAdviceDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     // Define color stops for clothing advice parameters
     final feelsLikeColors = [
-      ColorStop(10.0, const Color.fromARGB(255, 32, 140, 248)), // <10
-      ColorStop(15.0, Colors.green), // 10-15
-      ColorStop(26.0, Colors.yellow), // 15-26
-      ColorStop(30.0, Colors.orange), // 26-30
-      ColorStop(double.infinity, Colors.red), // >30
+      ColorStop(10.0, const Color.fromARGB(255, 32, 140, 248).withOpacity(0.7)), // <10
+      ColorStop(15.0, Colors.green.shade400), // 10-15
+      ColorStop(26.0, Colors.yellow.shade400), // 15-26
+      ColorStop(30.0, Colors.orange.shade400), // 26-30
+      ColorStop(double.infinity, Colors.red.shade400), // >30
     ];
     final tempDiffColors = [
-      ColorStop(3.0, Colors.green), // <3
-      ColorStop(7.0, Colors.yellow), // 3-7
-      ColorStop(double.infinity, Colors.red), // >7
+      ColorStop(5.0, Colors.green.shade400), // <5
+      ColorStop(10.0, Colors.yellow.shade400), // 5-10
+      ColorStop(double.infinity, Colors.red.shade400), // >7
     ];
 
     // Calculate temperature difference using data from the new class
@@ -75,7 +75,7 @@ class ClothingAdviceDialog extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            _buildDetailItem(context, '體感溫度', Icons.thermostat_outlined, Colors.blue, data.feelsLike, 35.0, feelsLikeColors, '°C', getFeelsLikeDescription),
+            _buildDetailItem(context, '目前體感溫度', Icons.thermostat_outlined, Colors.blue, data.feelsLike, 50.0, feelsLikeColors, '°C', getFeelsLikeDescription),
             _buildDetailItem(context, '溫差', Icons.show_chart, Colors.purple, tempDifference, 15.0, tempDiffColors, '°C', getTempDiffDescription),
           ],
         ),
@@ -107,8 +107,16 @@ class ClothingAdviceDialog extends StatelessWidget {
                 width: double.infinity,
               ),
             ),
-            const SizedBox(width: 8),
-            Text('${value.toStringAsFixed(1)}$unit', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+            SizedBox(
+              width: 75.0,
+              child: Padding(
+                padding: const EdgeInsets.only(left: 8.0),
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: Text('${value.toStringAsFixed(1)}$unit', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 4),

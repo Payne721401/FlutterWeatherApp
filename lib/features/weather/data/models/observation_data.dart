@@ -122,7 +122,7 @@ class ObservationData {
       observations: data['observations'] != null ? ObservationDetails.fromMap(data['observations']) : null,
       stationId: data['stationId'] as String? ?? '',
       stationName: data['stationName'] as String? ?? '',
-      timestamp: data['timestamp'] as int?,
+      timestamp: (data['timestamp'] as num?)?.toInt(),
     );
   }
 }

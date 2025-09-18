@@ -8,7 +8,7 @@ const Set<int> dayNightWeatherCodes = {
 /// 將所有天氣描述對應到其「分類代碼」。
 const Map<String, int> descriptionToCodeMap = {
   // Code 1
-  "晴天": 1,
+  "晴": 1,
   // Code 2
   "晴時多雲": 2,
   // Code 3
@@ -20,7 +20,7 @@ const Map<String, int> descriptionToCodeMap = {
   // Code 6
   "陰時多雲": 6,
   // Code 7
-  "陰天": 7,
+  "陰": 7,
   // Code 8
   "多雲陣雨": 8,
   "多雲短暫雨": 8,
@@ -39,7 +39,7 @@ const Map<String, int> descriptionToCodeMap = {
   "陰時多雲短暫雨": 10,
   "陰時多雲短暫陣雨": 10,
   // Code 11
-  "雨天": 11,
+  "雨": 11,
   "晴午後陰短暫雨": 11,
   "晴午後陰短暫陣雨": 11,
   "陰短暫雨": 11,

@@ -1,4 +1,5 @@
 // 檔案：lib/native_ad_widget.dart
+import 'dart:developer';
 
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
@@ -124,7 +125,7 @@ class _BaseNativeAdWidgetState extends State<_BaseNativeAdWidget> {
             }
           },
           onAdFailedToLoad: (ad, err) {
-            print('NativeAd failed to load (factory: ${widget.factoryId}): ${err.message}');
+            log('NativeAd failed to load (factory: ${widget.factoryId}): ${err.message}');
             ad.dispose();
             if (!_isDisposed) {
               setState(() {
@@ -133,24 +134,24 @@ class _BaseNativeAdWidgetState extends State<_BaseNativeAdWidget> {
               });
               if (_retryAttempt < _maxRetries) {
                 _retryAttempt++;
-                print('Retrying NativeAd load, attempt $_retryAttempt...');
+                log('Retrying NativeAd load, attempt $_retryAttempt...');
                 Future.delayed(Duration(seconds: _retryAttempt * 2), _loadAd);
               } else {
-                print('Max NativeAd retries reached for factory: ${widget.factoryId}.');
+                log('Max NativeAd retries reached for factory: ${widget.factoryId}.');
                 _retryAttempt = 0;
               }
             }
           },
-          onAdOpened: (Ad ad) => print('NativeAd opened.'),
-          onAdClosed: (Ad ad) => print('NativeAd closed.'),
-          onAdImpression: (Ad ad) => print('NativeAd impression.'),
+          onAdOpened: (Ad ad) => log('NativeAd opened.'),
+          onAdClosed: (Ad ad) => log('NativeAd closed.'),
+          onAdImpression: (Ad ad) => log('NativeAd impression.'),
           onPaidEvent: (Ad ad, double valueMicros, PrecisionType precision, String currencyCode) =>
-              print('NativeAd paidEvent: $valueMicros $precision $currencyCode'),
+              log('NativeAd paidEvent: $valueMicros $precision $currencyCode'),
         ),
       );
       _nativeAd!.load();
     } catch (e) {
-      print('Error creating native ad: $e');
+      log('Error creating native ad: $e');
       if (!_isDisposed && _retryAttempt < _maxRetries) {
         // ... (省略部分重複的錯誤處理程式碼以保持簡潔)
       }
@@ -170,21 +171,38 @@ class _BaseNativeAdWidgetState extends State<_BaseNativeAdWidget> {
       return const SizedBox.shrink();
     }
 
+    // 定義卡片的圓角風格，方便共用
+    final cardShape = RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(16.0),
+    );
+
     if (!_nativeAdIsLoaded || _nativeAd == null) {
-      // 在廣告載入時，顯示一個有固定高度的佔位符，避免畫面跳動
-      return Container(
-        height: widget.height,
-        width: double.infinity,
-        alignment: Alignment.center,
-        child: Text('廣告載入中...', style: TextStyle(color: Colors.grey[400])),
+      // 在廣告載入時，顯示一個有相同圓角和高度的佔位符，避免畫面跳動
+      return Card(
+        shape: cardShape,
+        clipBehavior: Clip.antiAlias,
+        elevation: 0,
+        color: Colors.grey[200],
+        child: SizedBox(
+          height: widget.height,
+          width: double.infinity,
+          child: Center(
+            child: Text('廣告載入中...', style: TextStyle(color: Colors.grey[500])),
+          ),
+        ),
       );
     }
 
-    // 廣告載入成功，顯示廣告
-    return SizedBox(
-      width: double.infinity,
-      height: widget.height,
-      child: AdWidget(ad: _nativeAd!),
+    // 廣告載入成功，顯示在有圓角的 Card 中
+    return Card(
+      shape: cardShape,
+      elevation: 0,
+      clipBehavior: Clip.antiAlias, // 這會裁切子 Widget (廣告) 以符合圓角
+      child: SizedBox(
+        width: double.infinity,
+        height: widget.height,
+        child: AdWidget(ad: _nativeAd!),
+      ),
     );
   }
 }

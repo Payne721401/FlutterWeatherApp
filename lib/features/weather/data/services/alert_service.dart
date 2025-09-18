@@ -1,3 +1,4 @@
+import 'dart:developer';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/weather_alert.dart';
@@ -15,28 +16,35 @@ class AlertService {
 
         List<WeatherAlert> alerts = [];
         for (var entry in entries) {
-          // Check if author is 中央氣象署 or 水利署
-          if (entry['author'] != null &&
-              entry['author']['name'] != null &&
-              (entry['author']['name'] == '中央氣象署' || entry['author']['name'] == '水利署')) {
-            try {
-              // Now this correctly uses the factory from the new WeatherAlert model
-              alerts.add(WeatherAlert.fromJson(entry));
-            } catch (e) {
-              print('Error parsing alert entry: $e');
-              // Continue to the next entry if parsing fails for one
+          try {
+            final authorName = entry['author']?['name'] as String?;
+            final title = entry['title'] as String?;
+
+            if (authorName == null || title == null) continue;
+
+            bool shouldAdd = false;
+            if (authorName == '中央氣象署') {
+              shouldAdd = true;
+            } else if (authorName == '水利署' && title == '淹水') {
+              shouldAdd = true;
             }
+
+            if (shouldAdd) {
+              alerts.add(WeatherAlert.fromJson(entry));
+            }
+          } catch (e) {
+            log('Error parsing or filtering alert entry: $e');
           }
         }
         return alerts;
       } else {
         // Handle non-200 status code
-        print('Failed to load alerts: ${response.statusCode}');
+        log('Failed to load alerts: ${response.statusCode}');
         return [];
       }
     } catch (e) {
       // Handle network or other errors
-      print('Error fetching alerts: $e');
+      log('Error fetching alerts: $e');
       return [];
     }
   }

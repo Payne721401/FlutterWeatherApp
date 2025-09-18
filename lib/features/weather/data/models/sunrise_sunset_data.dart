@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:flutter/material.dart';
 
 // Represents sunrise and sunset data, now in its own file.
@@ -20,7 +22,7 @@ class SunriseSunsetData {
         return TimeOfDay(hour: hour, minute: minute);
       } catch (e) {
         // Return a default value or handle the error appropriately
-        print('Error parsing time string "$timeString": $e');
+        log('Error parsing time string "$timeString": $e');
         return const TimeOfDay(hour: 0, minute: 0);
       }
     }

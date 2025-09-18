@@ -1,8 +1,8 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
-import 'package:weather_icons/weather_icons.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'weather_card.dart';
-
-// Helper functions remain the same
+import '../utils/weather_icon_mapper.dart';
 
 Widget _buildMetricItem(IconData icon, String label, Widget valueWidget, {VoidCallback? onTap}) {
   return GestureDetector(
@@ -37,34 +37,28 @@ Color _getAirQualityColor(String? aqiLevel) {
   }
 }
 
-IconData _getWeatherIcon(String? condition) {
-  if (condition == null) return WeatherIcons.na;
-  final lowerCondition = condition.toLowerCase();
-  if (lowerCondition.contains('晴') || lowerCondition.contains('陽光')) return WeatherIcons.day_sunny;
-  if (lowerCondition.contains('多雲')) return WeatherIcons.day_cloudy;
-  if (lowerCondition.contains('陰')) return WeatherIcons.cloudy;
-  if (lowerCondition.contains('雷')) return WeatherIcons.thunderstorm;
-  if (lowerCondition.contains('雨')) return WeatherIcons.rain;
-  if (lowerCondition.contains('雪')) return WeatherIcons.snow;
-  if (lowerCondition.contains('霧')) return WeatherIcons.fog;
-  if (lowerCondition.contains('風')) return WeatherIcons.strong_wind;
-  return WeatherIcons.day_sunny;
-}
+String _getIconAssetPath(String? description, {required bool isNight}) {
+  const String basePath = kIsWeb ? 'assets/assets/icons/' : 'assets/icons/';
+  const String defaultCode = '4'; // Default to '多雲'
 
-Color _getWeatherIconColor(String? condition) {
-  if (condition == null) return Colors.grey;
-  final lowerCondition = condition.toLowerCase();
-  if (lowerCondition.contains('晴') || lowerCondition.contains('陽光')) return Colors.orange[400]!;
-  if (lowerCondition.contains('多雲') || lowerCondition.contains('陰')) return Colors.grey[500]!;
-  if (lowerCondition.contains('雷')) return Colors.purple[600]!;
-  if (lowerCondition.contains('雨')) return Colors.blue[500]!;
-  if (lowerCondition.contains('雪')) return Colors.lightBlue[200]!;
-  if (lowerCondition.contains('霧')) return Colors.grey[400]!;
-  return Colors.orange[400]!;
+  if (description == null || description.isEmpty) {
+    return '$basePath$defaultCode.svg';
+  }
+
+  final int? code = descriptionToCodeMap[description];
+
+  if (code == null) {
+    return '$basePath$defaultCode.svg';
+  }
+
+  if (isNight && dayNightWeatherCodes.contains(code)) {
+    return '$basePath$code-1.svg';
+  }
+
+  return '$basePath$code.svg';
 }
 
 class CombinedTemperatureForecastCard extends StatelessWidget {
-  // --- NEW: Accepting individual data fields instead of a large model ---
   final String? condition;
   final String? conditionIcon;
   final double? temperature;
@@ -74,6 +68,7 @@ class CombinedTemperatureForecastCard extends StatelessWidget {
   final int? precipitationChance;
   final int? aqi;
   final String? aqiLevel;
+  final bool isDaytime;
 
   const CombinedTemperatureForecastCard({
     super.key,
@@ -86,11 +81,11 @@ class CombinedTemperatureForecastCard extends StatelessWidget {
     this.precipitationChance,
     this.aqi,
     this.aqiLevel,
+    this.isDaytime = true,
   });
 
   @override
   Widget build(BuildContext context) {
-    // --- Safely handle nullable data with default values ---
     final weatherDescription = condition ?? 'N/A';
     final temp = temperature ?? 0;
     final feels = feelsLike ?? 0;
@@ -98,6 +93,9 @@ class CombinedTemperatureForecastCard extends StatelessWidget {
     final minTemp = tempLow ?? 0;
     final precip = precipitationChance ?? 0;
     final aqiValue = aqi ?? 0;
+
+    final iconDescription = conditionIcon ?? condition;
+    final iconPath = _getIconAssetPath(iconDescription, isNight: !isDaytime);
 
     return WeatherCard(
       child: Column(
@@ -134,10 +132,12 @@ class CombinedTemperatureForecastCard extends StatelessWidget {
                       flex: 2,
                       child: Container(
                         padding: const EdgeInsets.all(12),
-                        child: Icon(this.conditionIcon != null ? 
-                                  _getWeatherIcon(this.conditionIcon!) : 
-                                  _getWeatherIcon(weatherDescription), // Use conditionIcon if provided, else derive from condition
-                                 size: 48, color: _getWeatherIconColor(this.condition)),
+                        child: SvgPicture.asset(
+                          iconPath,
+                          width: 56, // MODIFIED: Increased size from 48 to 64
+                          height: 56, // MODIFIED: Increased size from 48 to 64
+                          placeholderBuilder: (BuildContext context) => Icon(Icons.wb_cloudy_outlined, size: 56, color: Colors.grey),
+                        ),
                       ),
                     ),
                   ],

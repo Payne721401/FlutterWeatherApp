@@ -13,19 +13,19 @@ class DryingIndexDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     // Define color stops for drying index parameters with vivid colors
     final temperatureColors = [
-      ColorStop(15.0, Colors.red), // <15 red
-      ColorStop(25.0, Colors.yellow), // 15-25 yellow
-      ColorStop(double.infinity, Colors.green), // >25 green
+      ColorStop(15.0, Colors.red.shade400), // <15 red
+      ColorStop(25.0, Colors.yellow.shade400), // 15-25 yellow
+      ColorStop(double.infinity, Colors.green.shade400), // >25 green
     ];
     final humidityColors = [
-      ColorStop(60.0, Colors.green), // <60 green
-      ColorStop(80.0, Colors.yellow), // 60-80 yellow
-      ColorStop(double.infinity, Colors.red), // >80 red
+      ColorStop(60.0, Colors.green.shade400), // <60 green
+      ColorStop(85.0, Colors.yellow.shade400), // 60-85 yellow
+      ColorStop(double.infinity, Colors.red.shade400), // >85 red
     ];
     final precipitationColors = [
-      ColorStop(30.0, Colors.green), // <30 green
-      ColorStop(60.0, Colors.yellow), // 30-60 yellow
-      ColorStop(double.infinity, Colors.red), // >60 red
+      ColorStop(30.0, Colors.green.shade400), // <30 green
+      ColorStop(60.0, Colors.yellow.shade400), // 30-60 yellow
+      ColorStop(double.infinity, Colors.red.shade400), // >60 red
     ];
 
     // Calculate drying advice using data from the new class
@@ -82,12 +82,12 @@ class DryingIndexDialog extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            // 溫度
-            _buildDetailItem(context, '溫度', Icons.thermostat_outlined, Colors.redAccent, data.temperature, 40.0, temperatureColors, '°C', getTemperatureDescription),
             // 濕度
             _buildDetailItem(context, '濕度', Icons.water_drop_outlined, Colors.lightBlue, data.humidity.toDouble(), 100.0, humidityColors, '%', getHumidityDescription),
             // 降雨機率
             _buildDetailItem(context, '降雨機率', Icons.umbrella_outlined, Colors.grey, data.precipitationChance.toDouble(), 100.0, precipitationColors, '%', getPrecipitationDescription),
+            // 溫度 (moved to the bottom)
+            _buildDetailItem(context, '溫度', Icons.thermostat_outlined, Colors.redAccent, data.temperature, 40.0, temperatureColors, '°C', getTemperatureDescription),
           ],
         ),
       ),
@@ -118,8 +118,16 @@ class DryingIndexDialog extends StatelessWidget {
                 width: double.infinity,
               ),
             ),
-            const SizedBox(width: 8),
-            Text('${value.toStringAsFixed(unit == "°C" ? 1 : 0)}$unit', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+            SizedBox(
+              width: 75.0,
+              child: Padding(
+                padding: const EdgeInsets.only(left: 8.0),
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: Text('${value.toStringAsFixed(unit == "°C" ? 1 : 0)}$unit', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 4),

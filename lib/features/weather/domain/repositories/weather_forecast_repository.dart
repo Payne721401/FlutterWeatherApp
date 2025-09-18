@@ -88,16 +88,13 @@ class WeatherForecastRepositoryImpl implements WeatherForecastRepository {
   List<DailyForecast> _groupAndMergeWeeklyForecasts(List<raw.WeeklyForecastItem> weeklyForecasts, DateTime now) {
     if (weeklyForecasts.isEmpty) return [];
 
-    // MODIFIED: Use a robust string-based key for grouping. This is immune to timezone issues.
     final groupedByDate = groupBy(weeklyForecasts, (item) {
       final localTime = item.startTime;
-      // Format to "YYYY-MM-DD" string, which is a stable key for grouping.
       return "${localTime.year}-${localTime.month.toString().padLeft(2, '0')}-${localTime.day.toString().padLeft(2, '0')}";
     });
 
     final mergedForecasts = groupedByDate.entries.map((entry) {
       final itemsForDay = entry.value;
-      // Use the first item of the day for date context, as all items in this group share the same local date.
       final referenceItem = itemsForDay.first; 
       final date = DateUtils.dateOnly(referenceItem.startTime);
 
@@ -111,6 +108,9 @@ class WeatherForecastRepositoryImpl implements WeatherForecastRepository {
       
       final nonNullProbs = itemsForDay.map((e) => _parseRainProb(e.rainProb)).nonNulls.toList();
       final int? maxPrecipitation = nonNullProbs.isEmpty ? null : nonNullProbs.reduce(max);
+
+      final humidityValues = itemsForDay.map((e) => _parseHumidity(e.humidity)).nonNulls.toList();
+      final int? averageHumidity = humidityValues.isEmpty ? null : (humidityValues.reduce((a, b) => a + b) / humidityValues.length).round();
 
       String dayName;
       final localNow = DateUtils.dateOnly(now);
@@ -133,6 +133,7 @@ class WeatherForecastRepositoryImpl implements WeatherForecastRepository {
         dayMaxApparentTemperature: dayMaxApparent == -999.0 ? null : dayMaxApparent,
         dayMinApparentTemperature: dayMinApparent == 999.0 ? null : dayMinApparent,
         dayPrecipitationChance: maxPrecipitation,
+        humidity: averageHumidity,
       );
     }).toList();
 
@@ -145,5 +146,12 @@ class WeatherForecastRepositoryImpl implements WeatherForecastRepository {
       return null;
     }
     return int.tryParse(rainProbStr.replaceAll('%', '').trim());
+  }
+
+  int? _parseHumidity(String? humidityStr) {
+    if (humidityStr == null || !humidityStr.contains('%')) {
+      return null;
+    }
+    return int.tryParse(humidityStr.replaceAll('%', '').trim());
   }
 }

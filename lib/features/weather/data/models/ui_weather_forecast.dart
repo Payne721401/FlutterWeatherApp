@@ -58,6 +58,9 @@ class DailyForecast {
   /// This is nullable to handle cases where the source data is invalid or null.
   final int? dayPrecipitationChance;
 
+  /// The average humidity for the day as a percentage.
+  final int? humidity;
+
   DailyForecast({
     required this.date,
     required this.dayName,
@@ -68,5 +71,6 @@ class DailyForecast {
     this.dayMaxApparentTemperature,
     this.dayMinApparentTemperature,
     this.dayPrecipitationChance,
+    this.humidity,
   });
 }

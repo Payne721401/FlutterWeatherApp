@@ -53,11 +53,12 @@ class SunriseSunsetTimelinePainter extends CustomPainter {
   }
 }
 
-class OtherDetailsSunriseSunsetCard extends StatelessWidget {
-  // MODIFIED: Use independent, nullable properties instead of the old WeatherInfo model
+class ObservationCard extends StatelessWidget {
+  final String? stationName;
   final double? windSpeed;
+  final double? windDirection;
   final int? humidity;
-  final int? precipitationChance;
+  final double? precipitation;
   final int? uvIndex;
   final String? uvLevel;
   final int? aqi;
@@ -65,11 +66,13 @@ class OtherDetailsSunriseSunsetCard extends StatelessWidget {
   final TimeOfDay? sunrise;
   final TimeOfDay? sunset;
 
-  const OtherDetailsSunriseSunsetCard({
-    super.key, 
+  const ObservationCard({
+    super.key,
+    this.stationName,
     this.windSpeed,
+    this.windDirection,
     this.humidity,
-    this.precipitationChance,
+    this.precipitation,
     this.uvIndex,
     this.uvLevel,
     this.aqi,
@@ -102,7 +105,7 @@ class OtherDetailsSunriseSunsetCard extends StatelessWidget {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 2.0),
                         decoration: BoxDecoration(
-                          color: valueColor?.withOpacity(0.2),
+                          color: valueColor?.withAlpha((255 * 0.2).round()),
                           borderRadius: BorderRadius.circular(12.0),
                         ),
                         child: Text(
@@ -119,6 +122,12 @@ class OtherDetailsSunriseSunsetCard extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  String _getWindDirectionText(double? angle) {
+    if (angle == null) return '';
+    const directions = ['北', '北北東', '東北', '東北東', '東', '東南東', '東南', '南南東', '南', '南南西', '西南', '西南西', '西', '西北西', '西北', '北北西'];
+    return directions[((angle / 22.5) + 0.5).floor() % 16];
   }
 
   Color _getUvIndexColor(double uvIndex) {
@@ -162,26 +171,25 @@ class OtherDetailsSunriseSunsetCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // MODIFIED: Use passed-in properties with null-safety
-    final windSpeedText = '${(windSpeed ?? 0).round()}級';
-    final humidityText = '${humidity ?? 0}%';
-    final precipitationChanceText = '${precipitationChance ?? 0}%';
+    final windDirectionText = _getWindDirectionText(windDirection);
+    final windSpeedText = windSpeed != null ? '${windSpeed!.round()}級 $windDirectionText'.trim() : '無資料';
+    
+    final humidityText = humidity != null ? '$humidity%' : '無資料';
+    final precipitationText = precipitation != null ? '${precipitation!.toStringAsFixed(1)} mm' : '無資料';
 
-    // Safely display UV Index by providing a default value
-    final uvIndexValue = (uvIndex ?? 0).toDouble();
-    final uvIndexText = '${uvIndexValue.round()}';
-    final uvIndexColor = _getUvIndexColor(uvIndexValue);
-    final uvIndexLevelText = uvLevel ?? _getUvIndexLevelText(uvIndexValue);
+    final uvIndexValue = uvIndex?.toDouble();
+    final uvIndexText = uvIndexValue != null ? '${uvIndexValue.round()}' : '無資料';
+    final uvIndexColor = uvIndexValue != null ? _getUvIndexColor(uvIndexValue) : null;
+    final uvIndexLevelText = uvIndexValue != null ? uvLevel ?? _getUvIndexLevelText(uvIndexValue) : null;
 
-    // Safely display Air Quality Index by providing a default value
-    final aqiValue = (aqi ?? 0).toDouble();
-    final airQualityIndexText = '${aqiValue.round()}';
-    final airQualityColor = _getAirQualityColor(aqiValue);
-    final airQualityLevelText = aqiLevel ?? _getAirQualityLevelText(aqiValue);
+    final aqiValue = aqi?.toDouble();
+    final airQualityIndexText = aqiValue != null ? '${aqiValue.round()}' : '無資料';
+    final airQualityColor = aqiValue != null ? _getAirQualityColor(aqiValue) : null;
+    final airQualityLevelText = aqiValue != null ? aqiLevel ?? _getAirQualityLevelText(aqiValue) : null;
 
-    // MODIFIED: Handle nullable sunrise/sunset times
     final sunriseTime = sunrise != null ? DateFormat.Hm().format(_timeOfDayToDateTime(sunrise!)) : '--:--';
     final sunsetTime = sunset != null ? DateFormat.Hm().format(_timeOfDayToDateTime(sunset!)) : '--:--';
+    final sunriseSunsetText = sunrise != null && sunset != null ? '$sunriseTime / $sunsetTime' : '無資料';
 
     double currentPositionPercentage = 0.0;
     if (sunrise != null && sunset != null) {
@@ -204,14 +212,14 @@ class OtherDetailsSunriseSunsetCard extends StatelessWidget {
     final sunriseSunsetDetailItem = _buildWeatherDetailItem(
       Icons.wb_sunny_outlined,
       '日出/日落',
-      '$sunriseTime / $sunsetTime',
+      sunriseSunsetText,
     );
 
     return WeatherCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('天氣觀測站', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+          Text('天氣觀測站${stationName != null ? ' ($stationName)' : ''}', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
           const SizedBox(height: 16),
           IntrinsicHeight(
             child: Column(
@@ -228,7 +236,7 @@ class OtherDetailsSunriseSunsetCard extends StatelessWidget {
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildWeatherDetailItem(Icons.umbrella, '降雨機率', precipitationChanceText),
+                    _buildWeatherDetailItem(Icons.umbrella, '累積雨量', precipitationText),
                     const SizedBox(width: 16),
                     _buildWeatherDetailItem(
                       Icons.sunny,
@@ -258,33 +266,52 @@ class OtherDetailsSunriseSunsetCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 24),
+          if (sunrise != null && sunset != null)
           SizedBox(
             height: 50,
             child: LayoutBuilder(
               builder: (context, constraints) {
+                final textStyle = TextStyle(fontSize: 12, color: Colors.grey[600]);
+
+                final sunrisePainter = TextPainter(
+                  text: TextSpan(text: sunriseTime, style: textStyle),
+                  textDirection: Directionality.of(context),
+                )..layout();
+
+                final sunsetPainter = TextPainter(
+                  text: TextSpan(text: sunsetTime, style: textStyle),
+                  textDirection: Directionality.of(context),
+                )..layout();
+
+                final double paddingLeft = sunrisePainter.width / 2;
+                final double paddingRight = sunsetPainter.width / 2;
+
                 return Stack(
                    clipBehavior: Clip.none,
                   children: [
                      Positioned.fill(
-                       child: CustomPaint(
-                         painter: SunriseSunsetTimelinePainter(
-                           currentPositionPercentage: currentPositionPercentage,
-                           lineColor: Colors.amber[700]!,
-                           dotColor: Colors.amber[700]!,
-                           dotSize: 12.0,
-                           curveDepth: 35.0,
+                       child: Padding(
+                         padding: EdgeInsets.only(left: paddingLeft, right: paddingRight),
+                         child: CustomPaint(
+                           painter: SunriseSunsetTimelinePainter(
+                             currentPositionPercentage: currentPositionPercentage,
+                             lineColor: Colors.amber[700]!,
+                             dotColor: Colors.amber[700]!,
+                             dotSize: 12.0,
+                             curveDepth: 35.0,
+                           ),
                          ),
                        ),
                      ),
                     Positioned(
                       left: 0,
                       bottom: 0,
-                      child: Text(sunriseTime, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                      child: Text(sunriseTime, style: textStyle),
                     ),
                     Positioned(
                       right: 0,
                       bottom: 0,
-                      child: Text(sunsetTime, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                      child: Text(sunsetTime, style: textStyle),
                     ),
                   ],
                 );
