@@ -1,0 +1,52 @@
+
+# .github/workflows/ci.yml
+
+# 這個 workflow 的名稱，會顯示在 GitHub Actions 的頁面上
+name: Flutter CI
+
+# 觸發此 workflow 的事件
+on:
+  # 當有程式碼推送到 main 分支時觸發
+  push:
+    branches: [ main ]
+  # 當有 Pull Request 被建立或更新，且目標是 main 分支時觸發
+  pull_request:
+    branches: [ main ]
+
+# 定義要執行的任務 (jobs)
+jobs:
+  # 我們定義一個名為 "build" 的任務
+  build:
+    # 指定此任務運行的虛擬環境，'ubuntu-latest' 是最常用且經濟的選擇
+    runs-on: ubuntu-latest
+
+    # 定義此任務中的執行步驟
+    steps:
+      # 1. 簽出程式碼 (Checkout)
+      # 使用官方的 'checkout' action 將您的 GitHub 倉庫程式碼下載到虛擬環境中
+      - uses: actions/checkout@v4
+
+      # 2. 設定 Flutter 環境
+      # 使用 'subosito/flutter-action' 來安裝 Flutter SDK
+      - uses: subosito/flutter-action@v2
+        with:
+          # 根據您的 pubspec.yaml，您使用的是 beta 頻道
+          # 我們在這裡指定 channel，讓 action 自動抓取最新的 beta 版本
+          channel: 'beta' 
+          
+      # 3. 安裝專案依賴
+      # 運行 'flutter pub get' 來下載所有需要的 packages
+      - name: Install dependencies
+        run: flutter pub get
+
+      # 4. 程式碼靜態分析
+      # 運行 'flutter analyze' 檢查程式碼中是否有語法錯誤、警告或不符合規範的寫法
+      # '--fatal-infos' 和 '--fatal-warnings' 參數會讓任何警告或提示都導致 CI 失敗，確保程式碼品質
+      - name: Analyze project
+        run: flutter analyze --fatal-infos --fatal-warnings
+
+      # 5. 執行測試
+      # 運行 'flutter test' 來執行您專案中所有的單元測試和 Widget 測試
+      # 這是確保您 App 邏輯正確性的關鍵步驟
+      - name: Run tests
+        run: flutter test
