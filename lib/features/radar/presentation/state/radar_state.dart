@@ -10,6 +10,7 @@ import '../../data/services/radar_image_service.dart';
 import '../../data/services/radar_forecast_service.dart';
 import '../../utils/rainfall_calculator.dart';
 import '../../../../services/location_service.dart';
+import '../../../../services/remote_config_service.dart';
 
 // --- CONSTANTS ---
 const double radarLatMin = 17.75;
@@ -28,6 +29,7 @@ class RadarState with ChangeNotifier {
   MapLayerType _selectedView = MapLayerType.radarEcho;
   bool _isLoadingRadarImages = false;
   bool _isLoadingQpfImages = false;
+  bool _isLoadingEnsembleImage = false;
   bool _isFetchingLocation = false;
   
   Position? _currentPosition;
@@ -44,8 +46,11 @@ class RadarState with ChangeNotifier {
   bool _isPlaying = false;
   double _sliderValue = 0.0;
   List<Uint8List?> _qpfImageBytes = [];
+  Uint8List? _ensembleImageData;
+  DateTime? _lastFetchTimeEnsemble;
+  final Duration _cacheDurationEnsemble = const Duration(minutes: 30);
   DateTime? _lastFetchTimeQpf;
-  final Duration _cacheDurationQpf = const Duration(minutes: 10);
+  final Duration _cacheDurationQpf = const Duration(hours: 1);
   DateTime? _lastFetchTimeRadar;
   final Duration _cacheDurationRadar = const Duration(minutes: 10);
   int _currentQpfPage = 0;
@@ -57,6 +62,8 @@ class RadarState with ChangeNotifier {
   MapLayerType get selectedView => _selectedView;
   bool get isLoadingRadarImages => _isLoadingRadarImages;
   bool get isLoadingQpfImages => _isLoadingQpfImages;
+  bool get isLoadingEnsembleImage => _isLoadingEnsembleImage;
+  Uint8List? get ensembleImageData => _ensembleImageData;
   bool get isFetchingLocation => _isFetchingLocation;
   String? get locationError => _locationError;
   String? get administrativeDivision => _administrativeDivision;
@@ -91,7 +98,6 @@ class RadarState with ChangeNotifier {
     super.dispose();
   }
 
-  /// **MODIFIED**: This logic now correctly uses the service's isLoading and hasError states.
   void _updateRainfallForecast() {
     final rainfallData = _forecastService.rainfallData;
     final bool isServiceLoading = _forecastService.isLoading;
@@ -112,30 +118,14 @@ class RadarState with ChangeNotifier {
         userLon: _currentPosition!.longitude,
       );
       
-      final district = _administrativeDivision ?? '目前位置';
-      _rainfallForecastMessage = '$district：${_getForecastMessageFromLevel(_rainfallLevel)}';
+      // Use the shared utility function now
+      _rainfallForecastMessage = RainfallCalculator.getForecastMessageFromLevel(_rainfallLevel, _administrativeDivision);
     }
     
     notifyListeners();
   }
   
-  String _getForecastMessageFromLevel(RainfallLevel level) {
-    switch (level) {
-      case RainfallLevel.noRain:
-        return '未來1小時內無降雨';
-      case RainfallLevel.lightRain:
-        return '未來1小時內有小雨';
-      case RainfallLevel.moderateRain:
-        return '未來1小時內有中雨';
-      case RainfallLevel.heavyRain:
-        return '未來1小時內有大雨';
-      case RainfallLevel.torrentialRain:
-        return '未來1小時內有暴雨';
-      case RainfallLevel.unknown:
-      default:
-        return '降雨預報資料分析中...';
-    }
-  }
+  // This private method is no longer needed as the logic is now in RainfallCalculator.
 
   Future<void> determinePosition() async {
     _isFetchingLocation = true;
@@ -253,6 +243,39 @@ class RadarState with ChangeNotifier {
      await _fetchQpfImagesIfNeeded(forceRefresh: true);
   }
 
+  Future<void> _fetchEnsembleImageIfNeeded({bool forceRefresh = false}) async {
+    final now = DateTime.now();
+    if (!forceRefresh &&
+        _lastFetchTimeEnsemble != null &&
+        now.difference(_lastFetchTimeEnsemble!) < _cacheDurationEnsemble &&
+        _ensembleImageData != null) {
+      return;
+    }
+    _isLoadingEnsembleImage = true;
+    notifyListeners();
+
+    try {
+      final remoteConfig = await RemoteConfigService.getInstance();
+      final imageUrl = remoteConfig.ensembleImgUrl;
+      if (imageUrl.isNotEmpty) {
+        _ensembleImageData = await _imageService.loadEnsembleImage(imageUrl);
+        _lastFetchTimeEnsemble = DateTime.now();
+      } else {
+        _ensembleImageData = null;
+      }
+    } catch (e) {
+      _ensembleImageData = null;
+      _lastFetchTimeEnsemble = null;
+    } finally {
+      _isLoadingEnsembleImage = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> refreshEnsembleImage() async {
+    await _fetchEnsembleImageIfNeeded(forceRefresh: true);
+  }
+
   Point<double>? convertLatLngToPixel(double lat, double lon) {
     final double latRatio = (lat - radarLatMin) / (radarLatMax - radarLatMin);
     final double lonRatio = (lon - radarLonMin) / (radarLonMax - radarLonMin);
@@ -356,8 +379,10 @@ class RadarState with ChangeNotifier {
 
         if (view == MapLayerType.radarEcho) {
             _fetchRadarImagesIfNeeded();
-        } else {
+        } else if (view == MapLayerType.qpf) {
              _fetchQpfImagesIfNeeded();
+        } else if (view == MapLayerType.ensemble) {
+             _fetchEnsembleImageIfNeeded();
         }
         notifyListeners();
      }

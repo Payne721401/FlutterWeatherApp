@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
+import 'dart:developer';
 
 class RadarImageService {
   // --- Cache variables ---
@@ -21,11 +22,11 @@ class RadarImageService {
         _cachedRadarImageUrls != null &&
         _lastFetchTimeRadar != null &&
         now.difference(_lastFetchTimeRadar!) < _cacheDuration) {
-      print("[RadarService] Using cached radar image URLs.");
+      log("[RadarService] Using cached radar image URLs.");
       return _cachedRadarImageUrls!;
     }
 
-    print("[RadarService] Fetching new radar image URLs from CWA.");
+    log("[RadarService] Fetching new radar image URLs from CWA.");
     final nowUtc = DateTime.now().toUtc();
     final nowUtcPlus8 = nowUtc.add(const Duration(hours: 8));
 
@@ -50,7 +51,7 @@ class RadarImageService {
     _lastFetchTimeRadar = now; // Update timestamp after fetching URLs
     _cachedRadarImages = null; // Invalidate image cache when URLs are new
 
-    print("[RadarService] Generated radar image URLs: ${urls.join(', ')}");
+    log("[RadarService] Generated radar image URLs: ${urls.join(', ')}");
     return urls;
   }
 
@@ -60,10 +61,10 @@ class RadarImageService {
         _cachedRadarImages != null &&
         _lastFetchTimeRadar != null && // Use the same timestamp as URLs
         now.difference(_lastFetchTimeRadar!) < _cacheDuration) {
-      print("[RadarService] Using cached radar images.");
+      log("[RadarService] Using cached radar images.");
       return _cachedRadarImages!;
     }
-    print("[RadarService] Loading new radar images from network.");
+    log("[RadarService] Loading new radar images from network.");
 
     List<Uint8List?> loadedBytes = [];
 
@@ -76,16 +77,16 @@ class RadarImageService {
             loadedBytes.add(bytes);
             
             // --- 新增這些除錯資訊 ---
-            print("[RadarService] Image size: ${bytes.length} bytes");
-            print("[RadarService] First 10 bytes: ${bytes.take(10).toList()}");
+            log("[RadarService] Image size: ${bytes.length} bytes");
+            log("[RadarService] First 10 bytes: ${bytes.take(10).toList()}");
             
             // 檢查是否為有效的 PNG 檔案
             if (bytes.length >= 8) {
               final pngHeader = [137, 80, 78, 71, 13, 10, 26, 10]; // PNG 檔頭
               final actualHeader = bytes.take(8).toList();
               final isPng = actualHeader.toString() == pngHeader.toString();
-              print("[RadarService] Is valid PNG: $isPng");
-              print("[RadarService] Actual header: $actualHeader");
+              log("[RadarService] Is valid PNG: $isPng");
+              log("[RadarService] Actual header: $actualHeader");
 
               // 檢查PNG的IHDR chunk來獲取圖片信息
               // PNG結構：8字節PNG簽名 + 4字節chunk長度 + 4字節"IHDR" + IHDR數據
@@ -95,27 +96,27 @@ class RadarImageService {
                 final bitDepth = bytes[24];
                 final colorType = bytes[25];
                 
-                print("[RadarService] PNG Info - Width: $width, Height: $height, BitDepth: $bitDepth, ColorType: $colorType");
+                log("[RadarService] PNG Info - Width: $width, Height: $height, BitDepth: $bitDepth, ColorType: $colorType");
                 
                 // ColorType: 0=灰階, 2=RGB, 3=調色盤, 4=灰階+Alpha, 6=RGB+Alpha
                 if (colorType == 3) {
-                  print("[RadarService] Warning: Image uses palette (indexed color) - may need special handling");
+                  log("[RadarService] Warning: Image uses palette (indexed color) - may need special handling");
                 }
               }
             }
             
-            print("[RadarService] Successfully loaded radar image: $url");
+            log("[RadarService] Successfully loaded radar image: $url");
 
           } else {
-            print("[RadarService] Warning: Empty image data received for $url");
+            log("[RadarService] Warning: Empty image data received for $url");
             loadedBytes.add(null);
           }
         } else {
-          print("[RadarService] Error loading radar image $url: Status code ${response.statusCode}.");
+          log("[RadarService] Error loading radar image $url: Status code ${response.statusCode}.");
           loadedBytes.add(null);
         }
       } catch (e) {
-        print("[RadarService] Exception loading radar image $url: $e");
+        log("[RadarService] Exception loading radar image $url: $e");
         loadedBytes.add(null);
       }
     }
@@ -123,7 +124,7 @@ class RadarImageService {
     if (forceRefresh || _lastFetchTimeRadar == null || now.difference(_lastFetchTimeRadar!) >= _cacheDuration) {
         _lastFetchTimeRadar = now;
     }
-    print("[RadarService] Finished attempting to load radar images. Loaded ${loadedBytes.where((b) => b != null).length} out of ${loadedBytes.length} images.");
+    log("[RadarService] Finished attempting to load radar images. Loaded ${loadedBytes.where((b) => b != null).length} out of ${loadedBytes.length} images.");
     return loadedBytes;
   }
 
@@ -146,7 +147,7 @@ class RadarImageService {
            DateTime dt = DateTime(year, month, day, hour, minute);
            return DateFormat('HH:mm').format(dt);
        } catch (e) {
-           print("[RadarService] Error formatting timestamp for frame $frameIndex (URL: ${radarImageUrls[frameIndex]}): $e");
+           log("[RadarService] Error formatting timestamp for frame $frameIndex (URL: ${radarImageUrls[frameIndex]}): $e");
            return "Error";
        }
    }
@@ -166,10 +167,10 @@ class RadarImageService {
         _cachedQpfImages != null &&
         _lastFetchTimeQpf != null &&
         now.difference(_lastFetchTimeQpf!) < _cacheDuration) {
-      print("[RadarService] Using cached QPF images.");
+      log("[RadarService] Using cached QPF images.");
       return _cachedQpfImages!;
     }
-    print("[RadarService] Loading new QPF images from network.");
+    log("[RadarService] Loading new QPF images from network.");
 
     List<Uint8List?> loadedBytes = [];
     for (String url in _staticQpfImageUrls) {
@@ -177,23 +178,37 @@ class RadarImageService {
         final response = await http.get(Uri.parse(url));
         if (response.statusCode == 200) {
           loadedBytes.add(response.bodyBytes);
-          print("[RadarService] Successfully loaded QPF image: $url");
+          log("[RadarService] Successfully loaded QPF image: $url");
         } else {
-          print("[RadarService] Error loading QPF image $url: Status code ${response.statusCode}");
+          log("[RadarService] Error loading QPF image $url: Status code ${response.statusCode}");
           loadedBytes.add(null);
         }
       }
       catch (e) {
-        print("[RadarService] Exception loading QPF image $url: $e");
+        log("[RadarService] Exception loading QPF image $url: $e");
         loadedBytes.add(null);
       }
     }
     _cachedQpfImages = loadedBytes;
     _lastFetchTimeQpf = now;
-    print("[RadarService] Finished attempting to load QPF images. Loaded ${loadedBytes.where((b) => b != null).length} out of ${loadedBytes.length} images.");
+    log("[RadarService] Finished attempting to load QPF images. Loaded ${loadedBytes.where((b) => b != null).length} out of ${loadedBytes.length} images.");
     return loadedBytes;
   }
 
+  Future<Uint8List> loadEnsembleImage(String url) async {
+    try {
+      final response = await http.get(Uri.parse(url));
+      if (response.statusCode == 200) {
+        return response.bodyBytes;
+      } else {
+        log('Error loading ensemble image $url: Status code ${response.statusCode}', name: 'RadarImageService');
+        throw Exception('Failed to load ensemble image: status code ${response.statusCode}');
+      }
+    } catch (e) {
+      log('Exception loading ensemble image $url: $e', name: 'RadarImageService');
+      rethrow;
+    }
+  }
 
   String getQpfLabel(int index) {
     switch(index) {

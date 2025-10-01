@@ -1,4 +1,7 @@
-import 'package:myapp/features/radar/data/models/rainfall_data.dart';
+import 'dart:math' hide log;
+
+import 'package:weatherpro/features/radar/data/models/rainfall_data.dart';
+import 'dart:developer';
 
 /// A utility class for calculating rainfall levels based on geographic coordinates.
 class RainfallCalculator {
@@ -51,7 +54,7 @@ class RainfallCalculator {
         return RainfallLevel.torrentialRain;
       }
     } catch (e) {
-      print('Error calculating rainfall level: $e');
+      log('Error calculating rainfall level: $e');
       return RainfallLevel.unknown;
     }
   }
@@ -71,7 +74,6 @@ class RainfallCalculator {
       case RainfallLevel.torrentialRain:
         return '$district：未來1小時內有暴雨';
       case RainfallLevel.unknown:
-      default:
         return '降雨預報資料分析中...';
     }
   }

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
-import 'package:myapp/features/radar/presentation/widgets/numerical_forecast_view.dart' show BaseNumericalForecastView; // Import the base class
+import 'package:weatherpro/features/radar/presentation/widgets/numerical_forecast_view.dart' show BaseNumericalForecastView; // Import the base class
 
 // 實作 BaseNumericalForecastView 給移動平台使用
 class NumericalForecastViewImpl extends BaseNumericalForecastView {

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:ui_web' as ui_web; // Import dart:ui_web for platformViewRegistry
 import 'dart:html'; // Import dart:html for IFrameElement
-import 'package:myapp/features/radar/presentation/widgets/numerical_forecast_view.dart' show BaseNumericalForecastView; // Import the base class
+import 'package:weatherpro/features/radar/presentation/widgets/numerical_forecast_view.dart' show BaseNumericalForecastView; // Import the base class
 
 // 實作 BaseNumericalForecastView 給 Web 平台使用
 class NumericalForecastViewImpl extends BaseNumericalForecastView {

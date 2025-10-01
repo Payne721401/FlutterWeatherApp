@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:developer';
 import '../state/radar_state.dart'; // Need state for data and page controller
 
 class QpfView extends StatelessWidget {
@@ -39,7 +40,7 @@ class QpfView extends StatelessWidget {
                     ));
                   },
                   errorBuilder: (context, error, stackTrace) {
-                    print("Error loading QPF image ${radarState.qpfImageUrls[index]}: $error");
+                    log("Error loading QPF image ${radarState.qpfImageUrls[index]}: $error");
                     return const Center(child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
