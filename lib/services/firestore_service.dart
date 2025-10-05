@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import '../models/weather_forecast.dart';
@@ -22,26 +24,45 @@ class FirestoreService extends ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   // Caches for data by location ID
-  Map<String, Map<String, dynamic>> _cachedCurrentLocationCombinedData = {};
-  Map<String, DateTime> _lastCurrentLocationFetchTime = {};
-  Map<String, Map<String, dynamic>> _cachedSearchResultsCombinedData = {};
-  Map<String, DateTime> _lastSearchResultsFetchTime = {};
+  final Map<String, Map<String, dynamic>> _cachedCurrentLocationCombinedData = {};
+  final Map<String, DateTime> _lastCurrentLocationFetchTime = {};
+  final Map<String, Map<String, dynamic>> _cachedSearchResultsCombinedData = {};
+  final Map<String, DateTime> _lastSearchResultsFetchTime = {};
   
   // New: Dedicated caches for separated data types
-  Map<String, WeatherForecast> _cachedWeatherForecasts = {};
-  Map<String, DateTime> _lastWeatherForecastFetchTime = {};
-  Map<String, SunriseSunsetData> _cachedSunriseSunset = {};
-  Map<String, DateTime> _lastSunriseSunsetFetchTime = {};
+  final Map<String, WeatherForecast> _cachedWeatherForecasts = {};
+  final Map<String, DateTime> _lastWeatherForecastFetchTime = {};
+  final Map<String, SunriseSunsetData> _cachedSunriseSunset = {};
+  final Map<String, DateTime> _lastSunriseSunsetFetchTime = {};
 
   // Caches for nearest data by geographic location
-  Map<String, AirQuality> _cachedNearestAirQuality = {};
-  Map<String, DateTime> _lastNearestAirQualityFetchTime = {};
-  Map<String, UVIndexData> _cachedNearestUVIndex = {};
-  Map<String, DateTime> _lastNearestUVIndexFetchTime = {};
-  Map<String, ObservationData> _cachedNearestObservation = {};
-  Map<String, DateTime> _lastNearestObservationFetchTime = {};
+  final Map<String, AirQuality> _cachedNearestAirQuality = {};
+  final Map<String, DateTime> _lastNearestAirQualityFetchTime = {};
+  final Map<String, UVIndexData> _cachedNearestUVIndex = {};
+  final Map<String, DateTime> _lastNearestUVIndexFetchTime = {};
+  final Map<String, ObservationData> _cachedNearestObservation = {};
+  final Map<String, DateTime> _lastNearestObservationFetchTime = {};
 
-  final Duration cacheDuration = const Duration(minutes: 10);
+  // MODIFICATION: Caches for the last found stationId (business ID) to avoid repeated geo-searches
+  final Map<String, String> _cachedNearestStationId = {};
+  final Map<String, Map<String, double>> _cachedNearestStationLocation = {};
+  static const double _locationChangeThresholdKm = 2.0; // 2 km threshold
+
+  // MODIFICATION: Add bounding box for Taiwan and its surrounding islands.
+  static const double _taiwanBoundsNorth = 26.3;
+  static const double _taiwanBoundsSouth = 21.8;
+  static const double _taiwanBoundsEast = 122.1;
+  static const double _taiwanBoundsWest = 118.2;
+
+  final Duration cacheDuration = const Duration(minutes: 20);
+
+  // MODIFICATION: Helper function to check if coordinates are within Taiwan's bounds.
+  bool _isWithinTaiwanBounds(double latitude, double longitude) {
+    return latitude >= _taiwanBoundsSouth &&
+           latitude <= _taiwanBoundsNorth &&
+           longitude >= _taiwanBoundsWest &&
+           longitude <= _taiwanBoundsEast;
+  }
 
   // Helper to check cache validity
   bool _isCacheValid(String cacheKey, CacheType type) {
@@ -82,7 +103,7 @@ class FirestoreService extends ChangeNotifier {
     bool forceRefresh = false,
     CacheType type = CacheType.currentLocation,
   }) async {
-    print("Warning: fetchWeatherForecastByLocation is deprecated. Use fetchWeatherForecast and fetchSunriseSunset instead.");
+    log("Warning: fetchWeatherForecastByLocation is deprecated. Use fetchWeatherForecast and fetchSunriseSunset instead.");
     if (type != CacheType.currentLocation && type != CacheType.searchResult) {
       return null;
     }
@@ -95,11 +116,11 @@ class FirestoreService extends ChangeNotifier {
         : _lastSearchResultsFetchTime;
 
     if (!forceRefresh && _isCacheValid(locationId, type)) {
-      print("Returning cached combined weather data for $locationId");
+      log("Returning cached combined weather data for $locationId");
       return cacheDataMap[locationId];
     }
 
-    print("Fetching combined weather data for $locationId from Firestore");
+    log("Fetching combined weather data for $locationId from Firestore");
 
     try {
       final parts = locationId.split('_');
@@ -124,7 +145,7 @@ class FirestoreService extends ChangeNotifier {
         return combinedData;
       }
     } catch (e) {
-      print("Error in deprecated fetchWeatherForecastByLocation: $e");
+      log("Error in deprecated fetchWeatherForecastByLocation: $e");
     }
     return null;
   }
@@ -132,11 +153,11 @@ class FirestoreService extends ChangeNotifier {
   /// New: Fetches only the WeatherForecast data.
   Future<WeatherForecast?> fetchWeatherForecast(String locationId, {bool forceRefresh = false}) async {
     if (!forceRefresh && _isCacheValid(locationId, CacheType.weatherForecast)) {
-      print("Returning cached weather forecast for $locationId");
+      log("Returning cached weather forecast for $locationId");
       return _cachedWeatherForecasts[locationId];
     }
 
-    print("Fetching weather forecast for $locationId from Firestore");
+    log("Fetching weather forecast for $locationId from Firestore");
     try {
       final doc = await _firestore.collection('weather_forecasts').doc(locationId).get();
       if (doc.exists && doc.data() != null) {
@@ -147,7 +168,7 @@ class FirestoreService extends ChangeNotifier {
         return forecast;
       }
     } catch (e) {
-      print("Error fetching weather forecast for $locationId: $e");
+      log("Error fetching weather forecast for $locationId: $e");
     }
     return null;
   }
@@ -155,11 +176,11 @@ class FirestoreService extends ChangeNotifier {
   /// New: Fetches only the sunrise and sunset data by county name.
   Future<SunriseSunsetData?> fetchSunriseSunset(String countyName, {bool forceRefresh = false}) async {
     if (!forceRefresh && _isCacheValid(countyName, CacheType.sunriseSunset)) {
-      print("Returning cached sunrise/sunset data for $countyName");
+      log("Returning cached sunrise/sunset data for $countyName");
       return _cachedSunriseSunset[countyName];
     }
 
-    print("Fetching sunrise/sunset data for $countyName from Firestore");
+    log("Fetching sunrise/sunset data for $countyName from Firestore");
     try {
       final doc = await _firestore.collection('sunrise_sunset').doc(countyName).get();
       if (doc.exists && doc.data() != null) {
@@ -170,12 +191,12 @@ class FirestoreService extends ChangeNotifier {
         return data;
       }
     } catch (e) {
-      print("Error fetching sunrise/sunset data for $countyName: $e");
+      log("Error fetching sunrise/sunset data for $countyName: $e");
     }
     return null;
   }
 
-  // Generic helper for concentric circle search
+  // Generic helper for concentric circle search upgraded with smart caching
   Future<T?> _fetchNearestData<T>({
     required double latitude,
     required double longitude,
@@ -184,31 +205,69 @@ class FirestoreService extends ChangeNotifier {
     required Map<String, T> cache,
     required Map<String, DateTime> cacheTime,
     required CacheType cacheType,
+    List<double>? customSearchRadii,
     bool forceRefresh = false,
   }) async {
     final cacheKey = '${latitude.toStringAsFixed(4)},${longitude.toStringAsFixed(4)}';
+
+    // CORRECTED LOGIC 1: Use 'stationId' for the smart cache check
+    if (!forceRefresh && _cachedNearestStationId.containsKey(collectionName)) {
+      final lastLocation = _cachedNearestStationLocation[collectionName]!;
+      final distanceMoved = GeohashUtil.calculateDistance(latitude, longitude, lastLocation['lat']!, lastLocation['lon']!);
+      
+      if (distanceMoved < _locationChangeThresholdKm) {
+        final stationId = _cachedNearestStationId[collectionName]!;
+        log("User location stable (moved ${distanceMoved.toStringAsFixed(2)} km). Fetching latest data directly using cached stationId '$stationId' for $collectionName.");
+        try {
+          final querySnapshot = await _firestore
+              .collection(collectionName)
+              .where('stationId', isEqualTo: stationId)
+              .limit(1)
+              .get();
+
+          if (querySnapshot.docs.isNotEmpty) {
+            final doc = querySnapshot.docs.first;
+            final item = fromDocument(doc.data(), doc.id);
+            cache[cacheKey] = item;
+            cacheTime[cacheKey] = DateTime.now();
+            notifyListeners();
+            return item;
+          }
+        } catch (e) {
+          log("Failed to fetch directly using cached stationId '$stationId'. Error: $e. Proceeding with geo-search.");
+          _cachedNearestStationId.remove(collectionName);
+          _cachedNearestStationLocation.remove(collectionName);
+        }
+      }
+    }
+
     if (!forceRefresh && _isCacheValid(cacheKey, cacheType)) {
-      print("Returning cached nearest $collectionName data for $cacheKey");
+      log("Returning cached nearest $collectionName data for $cacheKey");
       return cache[cacheKey];
     }
 
-    print("Fetching nearest $collectionName for ($latitude, $longitude) using concentric search.");
+    log("Fetching nearest $collectionName for ($latitude, $longitude) using concentric search.");
     
-    final List<double> searchRadii = [10.0, 30.0, 80.0, 150.0];
+    final List<double> searchRadii = customSearchRadii ?? [5.0, 10.0, 30.0, 80.0, 150.0];
 
     for (final radiusKm in searchRadii) {
-      print("Searching for $collectionName within $radiusKm km...");
+      log("Searching for $collectionName within $radiusKm km...");
       try {
         final precision = GeohashUtil.getGeohashLengthForRadius(radiusKm);
         final searchGeohashes = GeohashUtil.getGeohashNeighbors(latitude, longitude, precision);
+        final bool useLimit = (radiusKm == 5.0);
 
-        final queries = searchGeohashes.map((prefix) =>
-            _firestore.collection(collectionName)
+        final queries = searchGeohashes.map((prefix) {
+            Query query = _firestore.collection(collectionName)
                 .where('geohash', isGreaterThanOrEqualTo: prefix)
-                .where('geohash', isLessThan: '$prefix~').get());
+                .where('geohash', isLessThan: '$prefix~');
+            if (useLimit) {
+              query = query.limit(1);
+            }
+            return query.get();
+        });
 
         final querySnapshots = await Future.wait(queries);
-
         final matchingDocs = <QueryDocumentSnapshot>[];
         for (final snapshot in querySnapshots) {
           matchingDocs.addAll(snapshot.docs);
@@ -216,7 +275,7 @@ class FirestoreService extends ChangeNotifier {
 
         if (matchingDocs.isEmpty) continue;
 
-        T? nearestItem;
+        QueryDocumentSnapshot? nearestDoc;
         double minDistance = double.infinity;
 
         for (var doc in matchingDocs) {
@@ -228,26 +287,36 @@ class FirestoreService extends ChangeNotifier {
             final distance = GeohashUtil.calculateDistance(latitude, longitude, docLatitude, docLongitude);
             if (distance <= radiusKm && distance < minDistance) {
               minDistance = distance;
-              nearestItem = fromDocument(data, doc.id);
+              nearestDoc = doc;
             }
           }
         }
 
-        if (nearestItem != null) {
-          final stationName = (nearestItem as dynamic).stationName;
-          print("Found nearest $collectionName at station '$stationName' (${minDistance.toStringAsFixed(2)} km) within $radiusKm km radius.");
+        if (nearestDoc != null) {
+          final T nearestItem = fromDocument(nearestDoc.data() as Map<String, dynamic>, nearestDoc.id);
+          final stationName = (nearestItem as dynamic).stationName ?? 'Unknown';
+          
+          log("Found nearest $collectionName at station '$stationName' (${minDistance.toStringAsFixed(2)} km) within $radiusKm km radius.");
+          
           cache[cacheKey] = nearestItem;
           cacheTime[cacheKey] = DateTime.now();
+
+          // CORRECTED LOGIC 2: Cache the 'stationId' field from the data model
+          final stationIdForCache = (nearestItem as dynamic).stationId;
+          _cachedNearestStationId[collectionName] = stationIdForCache;
+          _cachedNearestStationLocation[collectionName] = {'lat': latitude, 'lon': longitude};
+          log("Cached stationId '$stationIdForCache' for $collectionName at current location.");
+
           notifyListeners();
           return nearestItem;
         }
       } catch (e) {
-        print("Error fetching nearest $collectionName within $radiusKm km: $e");
+        log("Error fetching nearest $collectionName within $radiusKm km: $e");
         continue;
       }
     }
 
-    print("No $collectionName found within the maximum search radius.");
+    log("No $collectionName found within the maximum search radius.");
     return null;
   }
 
@@ -257,6 +326,12 @@ class FirestoreService extends ChangeNotifier {
     required double longitude,
     bool forceRefresh = false,
   }) async {
+    // MODIFICATION: Add pre-flight check.
+    if (!_isWithinTaiwanBounds(latitude, longitude)) {
+      log("User is outside Taiwan's bounding box. Skipping Firestore geo-search for Air Quality.");
+      return null;
+    }
+
     return _fetchNearestData<AirQuality>(
       latitude: latitude,
       longitude: longitude,
@@ -274,6 +349,12 @@ class FirestoreService extends ChangeNotifier {
     required double longitude,
     bool forceRefresh = false,
   }) async {
+    // MODIFICATION: Add pre-flight check.
+    if (!_isWithinTaiwanBounds(latitude, longitude)) {
+      log("User is outside Taiwan's bounding box. Skipping Firestore geo-search for UV Index.");
+      return null;
+    }
+
     return _fetchNearestData<UVIndexData>(
       latitude: latitude,
       longitude: longitude,
@@ -282,6 +363,7 @@ class FirestoreService extends ChangeNotifier {
       cache: _cachedNearestUVIndex,
       cacheTime: _lastNearestUVIndexFetchTime,
       cacheType: CacheType.nearestUVIndex,
+      customSearchRadii: [30.0, 80.0, 150.0],
       forceRefresh: forceRefresh,
     );
   }
@@ -291,6 +373,12 @@ class FirestoreService extends ChangeNotifier {
     required double longitude,
     bool forceRefresh = false,
   }) async {
+    // MODIFICATION: Add pre-flight check.
+    if (!_isWithinTaiwanBounds(latitude, longitude)) {
+      log("User is outside Taiwan's bounding box. Skipping Firestore geo-search for Observations.");
+      return null;
+    }
+    
     return _fetchNearestData<ObservationData>(
       latitude: latitude,
       longitude: longitude,
