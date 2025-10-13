@@ -1,25 +1,33 @@
-import 'package:flutter/material.dart';
+import 'package:equatable/equatable.dart';
 
-class MessageData {
-  MessageData({this.image, this.text, this.fromUser, this.suggestions, this.isTyping = false, this.weatherReportData});
-  final Image? image;
-  final String? text;
-  final bool? fromUser;
-  final List<AISuggestion>? suggestions;
-  final bool isTyping; // New property for typing animation
-  final Map<String, dynamic>? weatherReportData; // New property for structured weather data
-}
+class MessageData extends Equatable {
+  final String text;
+  final bool fromUser;
+  final bool isTyping;
+  final List<String>? quickReplies; // PLAN: Add quickReplies field
 
-class AISuggestion {
-  final String title;
-  final String description;
+  const MessageData({
+    required this.text,
+    required this.fromUser,
+    this.isTyping = false,
+    this.quickReplies, // PLAN: Add to constructor
+  });
 
-  AISuggestion({required this.title, required this.description});
-
-  factory AISuggestion.fromJson(Map<String, dynamic> json) {
-    return AISuggestion(
-      title: json['title'] ?? 'Suggestion',
-      description: json['description'] ?? 'Details about the suggestion.',
+  MessageData copyWith({
+    String? text,
+    bool? isTyping,
+    List<String>? quickReplies, // PLAN: Add to copyWith
+    bool removeQuickReplies = false, // Helper to explicitly remove replies
+  }) {
+    return MessageData(
+      text: text ?? this.text,
+      fromUser: fromUser,
+      isTyping: isTyping ?? this.isTyping,
+      quickReplies: removeQuickReplies ? null : quickReplies ?? this.quickReplies,
     );
   }
+
+  @override
+  // PLAN: Add quickReplies to props for Equatable
+  List<Object?> get props => [text, fromUser, isTyping, quickReplies];
 }
