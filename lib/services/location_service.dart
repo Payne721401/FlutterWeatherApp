@@ -1,62 +1,61 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:xml/xml.dart'; // For XML parsing
-import 'package:geolocator/geolocator.dart'; // Assuming used for getCurrentLocation
-import 'dart:developer'; // Import for log
-
-// You might need to handle location permissions before calling getCurrentLocation.
-// Example using geolocator:
-// Future<Position> _determinePosition() async {
-//   bool serviceEnabled;
-//   LocationPermission permission;
-
-//   serviceEnabled = await Geolocator.isLocationServiceEnabled();
-//   if (!serviceEnabled) {
-//     return Future.error('Location services are disabled.');
-//   }
-
-//   permission = await Geolocator.checkPermission();
-//   if (permission == LocationPermission.denied) {
-//     permission = await Geolocator.requestPermission();
-//     if (permission == LocationPermission.denied) {
-//       return Future.error('Location permissions are denied');
-//     }
-//   }
-
-//   if (permission == LocationPermission.deniedForever) {
-//     return Future.error(
-//         'Location permissions are permanently denied, we cannot request permissions.');
-//   }
-
-//   return await Geolocator.getCurrentPosition();
-// }
+import 'package:xml/xml.dart';
+import 'package:geolocator/geolocator.dart';
+import 'dart:developer';
 
 class LocationService {
-  static const String _logName = 'LocationService'; // Define a log name
+  static const String _logName = 'LocationService';
 
-  // Placeholder for getting current location (replace with actual geolocator implementation)
   Future<Position> getCurrentLocation() async {
-    // In a real app, use geolocator.getCurrentPosition();
-    // For now, returning a fixed location for demonstration/testing
-    // This fixed location is for Taipei 101 for testing administrative division lookup
-    log('Using fixed location for demonstration.', name: _logName);
-    return Position(latitude: 25.0338, longitude: 121.5646, timestamp: DateTime.now(), accuracy: 0.0, altitude: 0.0, altitudeAccuracy: 0.0, heading: 0.0, headingAccuracy: 0.0, speed: 0.0, speedAccuracy: 0.0);
-    // If you want to test the error handling, uncomment the line below
-    // throw Exception('Failed to get current location (simulated error)');
+    try {
+      // First, check if location services are enabled on the device.
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        log('Location services are disabled.', name: _logName);
+        throw Exception('Location services are disabled.');
+      }
+
+      // Permissions are handled by the caller (WeatherDataState).
+      // We directly try to get the current position.
+      return await Geolocator.getCurrentPosition();
+      
+    } catch (e) {
+      // If ANY error occurs (permission denied, timeout, GPS off, etc.)
+      log('Failed to get real location: $e. Returning default location.', name: _logName);
+      // Return a default position (Taipei City Hall)
+      return Position(
+        latitude: 25.0375, 
+        longitude: 121.5647, 
+        timestamp: DateTime.now(), 
+        accuracy: 0.0, 
+        altitude: 0.0, 
+        altitudeAccuracy: 0.0, 
+        heading: 0.0, 
+        headingAccuracy: 0.0, 
+        speed: 0.0, 
+        speedAccuracy: 0.0
+      );
+    }
   }
 
-  // Get administrative division (county/township) from latitude and longitude
   Future<String?> getAdministrativeDivision(double latitude, double longitude) async {
     final String url = 'https://api.nlsc.gov.tw/other/TownVillagePointQuery1/$longitude/$latitude/4326';
-    log('Requesting administrative division from URL: $url', name: _logName); // Use log
+    log('Requesting administrative division from URL: $url', name: _logName);
 
     try {
       final response = await http.get(Uri.parse(url));
 
       if (response.statusCode == 200) {
-        // Decode response body as UTF-8 explicitly
         final xmlString = utf8.decode(response.bodyBytes);
-        log('API Response Body (Success, UTF-8 decoded): $xmlString', name: _logName); // Use log
+        
+        // Handle empty response from API for out-of-bounds coordinates
+        if (xmlString.trim().isEmpty) {
+          log('API returned an empty response, likely out of Taiwan bounds.', name: _logName);
+          return null;
+        }
+
+        log('API Response Body (Success, UTF-8 decoded): $xmlString', name: _logName);
         final document = XmlDocument.parse(xmlString);
 
         final townVillageItem = document.findAllElements('townVillageItem').first;
@@ -66,19 +65,14 @@ class LocationService {
         return '$ctyName $townName';
       } else {
         log('Failed to load administrative division: ${response.statusCode}', name: _logName);
-        log('API Response Body (Error Status): ${response.body}', name: _logName); // Use log
+        log('API Response Body (Error Status): ${response.body}', name: _logName);
         return null;
       }
     } catch (e) {
-      log('Error fetching administrative division: $e', name: _logName); // Use log for error
-      // Attempt to log the response body if available in the caught exception (might not be standard)
+      log('Error fetching administrative division: $e', name: _logName);
       if (e is http.ClientException && e.message.contains('Failed to fetch')) {
-         // This specific ClientException on web might not have a response body accessible here
          log('ClientException on web, response body not directly available in error.', name: _logName);
       } else if (e.toString().contains('XmlParserException')) {
-         // For XmlParserException, the problematic body content is what we need.
-         // Unfortunately, the exception itself doesn't usually contain the body.
-         // We need to rely on the log on success or error status above.
          log('XmlParserException occurred. Check the preceding logs for the response body.', name: _logName);
       } else {
          log('Unexpected error type, could not log response body from exception.', name: _logName);
