@@ -6,149 +6,95 @@ This is a comprehensive Flutter application designed to provide users with real-
 
 ## Key Features
 
-*   **Detailed Weather Forecasts:**
-    *   Current weather conditions.
-    *   Hourly and weekly temperature and precipitation forecasts.
-    *   Various weather indices (e.g., UV Index, Drying Index).
-    *   Sunrise and sunset times.
-    *   Clothing, drying, and outdoor sports advice based on weather conditions.
-*   **Interactive Weather Radar:**
-    *   Visualize weather patterns with different map layers (e.g., precipitation, temperature).
-    *   Playback controls for historical and future radar data.
-    *   AI-powered analysis of radar data.
-*   **Intelligent AI Assistant:**
-    *   Engage in conversations with an AI assistant.
-    *   Receive personalized advice, including clothing recommendations and general weather insights.
-    *   Quick question panels for common queries.
-*   **Firebase Integration:**
-    *   Utilizes Firebase for backend services, likely including Firestore for data storage and potentially other services like Authentication or Cloud Functions.
-*   **Location Services:** Automatically fetches weather data based on the user's current location.
-*   **User Settings:** Customizable settings for language, notifications, and "About" information.
+*   **Detailed Weather Forecasts:** Current, hourly, and weekly forecasts with various indices.
+*   **Interactive Weather Radar:** Visualizes weather patterns with multiple map layers and AI analysis.
+*   **Intelligent AI Assistant:** Provides personalized advice, including clothing recommendations and weather insights.
+*   **Secure Authentication:** Supports sign-in with Google and Apple, with robust security measures.
+*   **Background Notifications:** Proactively alerts users to important weather events.
 
-## Technologies Used
+## UI Screenshots
 
-*   **Flutter:** The UI toolkit for building natively compiled applications for mobile, web, and desktop from a single codebase.
-*   **Dart:** The programming language used by Flutter.
-*   **Firebase:**
-    *   **Firestore:** NoSQL cloud database for flexible, scalable data storage.
-    *   **Firebase CLI & FlutterFire CLI:** Command-line tools for managing Firebase projects and Flutter integration.
-*   **Location Services:** For accessing device location.
+| Home Screen | Radar | AI Assistant | Settings |
+| :---: | :---: | :---: | :---: |
+| ![Home Screen](assets/screenshots/home_screen.jpg) | ![Radar](assets/screenshots/radar.jpg) | ![AI Assistant](assets/screenshots/ai_assistant.jpg) | ![Settings](assets/screenshots/settings.jpg) |
 
-## Getting Started
+## Architecture & Technical Stack
 
-Follow these steps to set up and run the project on your local machine.
+*   **Architecture**: Built with a feature-first, layered architecture (Presentation, Domain, Data) to ensure modularity and maintainability.
+*   **State Management**: Utilizes the BLoC (Business Logic Component) pattern for predictable and scalable state management across the app.
+*   **Firebase Backend**: Deeply integrated with Firebase for a comprehensive backend solution:
+    *   **Authentication**: For secure user sign-in.
+    *   **Firestore & Realtime Database**: For real-time data storage and managing usage counters.
+    *   **Vertex AI (Gemini)**: Powers the intelligent AI assistant features.
+    *   **Remote Config**: For dynamic app configuration.
+    *   **Crashlytics & Analytics**: For robust crash reporting and user engagement tracking.
 
-### Prerequisites
+## Security Features
 
-Before you begin, ensure you have the following installed:
+*   **Runtime Application Self-Protection (RASP)**: Implemented using `freerasp` to protect the application against threats like debugging, reverse engineering, and running on compromised (rooted/jailbroken) devices.
+*   **Backend Protection**: Leverages `Firebase App Check` to ensure that only authenticated and unmodified instances of the app can access backend resources.
 
-*   **Flutter SDK:** [Install Flutter](https://flutter.dev/docs/get-started/install)
-*   **Git:** [Install Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git)
-*   **Firebase CLI:**
-    ```bash
-    curl -sL https://firebase.tools | bash
-    ```
-    (Or `npm install -g firebase-tools` if you have Node.js and npm installed)
-*   **FlutterFire CLI:**
-    ```bash
-    dart pub global activate flutterfire_cli
-    ```
-    Ensure `~/.pub-cache/bin` is in your system's PATH.
+## Background Tasks & Notifications
 
-### 1. Clone the Repository
-
-First, clone the project repository to your local machine:
-
-```bash
-git clone YOUR_REPOSITORY_URL
-cd my-flutter-weather-app # Replace with your actual project directory name
-```
-
-### 2. Install Dependencies
-
-Navigate into the project directory and get all the necessary Dart packages:
-
-```bash
-flutter pub get
-```
-
-### 3. Firebase Project Setup (Crucial!)
-
-Since sensitive Firebase configuration files are excluded from Git for security reasons, you'll need to set up your own Firebase project and link it to this application.
-
-1.  **Create a Firebase Project:**
-    *   Go to the [Firebase Console](https://console.firebase.google.com/).
-    *   Click "Add project" and follow the instructions to create a new Firebase project.
-
-2.  **Register Your Apps:**
-    *   In your Firebase project, add an Android app and an iOS app.
-    *   **For Android:**
-        *   Provide your Android package name (e.g., `com.example.myapp`). You can find this in `android/app/src/main/AndroidManifest.xml` under the `package` attribute, or in `android/app/build.gradle.kts` in `applicationId`.
-        *   Download the `google-services.json` file.
-    *   **For iOS:**
-        *   Provide your iOS Bundle ID (e.g., `com.example.myapp`). You can find this in Xcode under your project's General settings.
-        *   Download the `GoogleService-Info.plist` file.
-
-3.  **Generate `lib/firebase_options.dart`:**
-    *   Make sure you are logged into Firebase CLI (`firebase login`).
-    *   In your Flutter project's root directory, run the FlutterFire configuration command. This will guide you through selecting your Firebase project and automatically generate the `lib/firebase_options.dart` file and place `google-services.json` and `GoogleService-Info.plist` in their correct platform-specific locations (`android/app/` and `ios/Runner/` respectively).
-    ```bash
-    flutterfire configure
-    ```
-    *   **Verify:** After running this command, ensure that `android/app/google-services.json`, `ios/Runner/GoogleService-Info.plist`, and `lib/firebase_options.dart` are present in their respective directories.
-
-### 4. Run the Application
-
-Once Firebase is configured, you can run the application on a connected device or simulator:
-
-```bash
-flutter run
-```
+*   **Intelligent Background Tasks**: Uses `workmanager` to schedule periodic background tasks, such as checking for evening forecasts and imminent rain alerts.
+*   **Proactive Notifications**: Delivers timely local notifications to users about important weather events, powered by `flutter_local_notifications`.
 
 ## Project Structure
 
-The project is organized using a feature-first approach to enhance modularity and maintainability:
+The project is organized using a feature-first approach. Below is an overview of the `lib` directory, which is the core of the application.
 
 ```
-.
-├── android/                  # Android specific files
-├── ios/                      # iOS specific files
-├── lib/
-│   ├── features/             # Contains distinct features (e.g., weather, radar, AI assistant)
-│   │   ├── ai_assistant/
-│   │   │   ├── data/
-│   │   │   └── presentation/
-│   │   ├── radar/
-│   │   │   ├── data/
-│   │   │   └── presentation/
-│   │   ├── settings/
-│   │   │   ├── screens/
-│   │   │   └── utils/
-│   │   └── weather/
-│   │       ├── data/
-│   │       ├── domain/
-│   │       └── presentation/
-│   ├── models/               # Common data models
-│   ├── services/             # Core application services (e.g., Firestore, Location)
-│   ├── main.dart             # Application entry point
-│   └── firebase_options.dart # Firebase configuration (auto-generated)
-├── pubspec.yaml              # Project dependencies and metadata
-├── README.md                 # Project documentation
-├── .gitignore                # Files/directories to be ignored by Git
-└── templates/                # Contains HTML templates (e.g., chat_page.dart, weather-app-showcase.html)
+lib
+├── background_tasks
+│   ├── evening_forecast_task_handler.dart
+│   ├── fcm_background_handler.dart
+│   ├── imminent_rain_task_handler.dart
+│   └── weather_alert_task_handler.dart
+├── features
+│   ├── ai_assistant
+│   │   ├── assets
+│   │   ├── data
+│   │   ├── domain
+│   │   └── presentation
+│   ├── location
+│   │   ├── data
+│   │   ├── domain
+│   │   └── presentation
+│   ├── radar
+│   │   ├── data
+│   │   ├── presentation
+│   │   └── utils
+│   ├── settings
+│   │   ├── domain
+│   │   ├── screens
+│   │   ├── utils
+│   │   └── widgets
+│   └── weather
+│       ├── data
+│       ├── domain
+│       └── presentation
+├── firebase_options.dart
+├── main.dart
+├── models
+├── screens
+├── services
+├── state
+├── utils
+└── widgets
 ```
 
-## Contributing
+## Continuous Integration (CI)
 
-If you'd like to contribute to this project, please follow these steps:
+This project uses **GitHub Actions** to automate quality assurance. The CI workflow is defined in `.github/workflows/ci.yml`:
 
-1.  Fork the repository.
-2.  Create a new branch (`git checkout -b feature/YourFeature`).
-3.  Make your changes.
-4.  Commit your changes (`git commit -m 'Add some feature'`).
-5.  Push to the branch (`git push origin feature/YourFeature`).
-6.  Open a Pull Request.
+1.  **Code Checkout**: Downloads the latest version of the code.
+2.  **Setup Flutter**: Installs the correct Flutter SDK version (beta channel) to match the project's environment.
+3.  **Install Dependencies**: Runs `flutter pub get` to ensure all packages are available.
+4.  **Static Analysis**: Executes `flutter analyze` with strict rules (`--fatal-infos`, `--fatal-warnings`) to enforce high code quality and style consistency. Any linting error will cause the pipeline to fail.
+5.  **Run Tests**: Runs all automated tests via `flutter test`. Any test failure will cause the pipeline to fail.
+
+This automated process ensures that only code that meets our quality and correctness standards, maintaining the stability of the project.
 
 ## License
 
-[Specify your license here, e.g., MIT License]
+This is a proprietary software. All rights are reserved.
