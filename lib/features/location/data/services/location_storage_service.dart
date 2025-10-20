@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:developer';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/location_data.dart';
 
@@ -54,7 +55,7 @@ class LocationStorageService {
             return LocationData.fromJson(jsonDecode(str));
           } catch (e) {
             // Handle potential malformed JSON
-            print('Error decoding recent search location: $e');
+            log('Error decoding recent search location: $e');
             return null;
           }
         })
