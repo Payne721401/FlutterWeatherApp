@@ -1,3 +1,4 @@
+
 import 'dart:async';
 import 'dart:developer' as developer;
 import 'package:firebase_auth/firebase_auth.dart';
@@ -7,7 +8,7 @@ import 'package:intl/intl.dart';
 import 'package:weatherpro/services/auth_service.dart';
 import 'package:weatherpro/services/remote_config_service.dart';
 
-/// 自定義異常，由 runProtectedAiAction 在用量耗盡或驗證失敗時拋出。
+/// Custom exception thrown by runProtectedAiAction when usage is depleted or validation fails.
 class UsageLimitException implements Exception {
   final String message;
   UsageLimitException(this.message);
@@ -16,16 +17,16 @@ class UsageLimitException implements Exception {
   String toString() => 'UsageLimitException: $message';
 }
 
-/// UsageLimitService - 負責處理所有與 AI 用量計數相關的安全邏輯。
-/// 該服務嚴格遵循最終確認的「安全每日重置計數器」計畫，並加入客戶端混淆邏輯。
+/// UsageLimitService - Handles all security logic related to AI usage counting.
+/// This service strictly follows the finalized "Secure Daily Reset Counter" plan, including client-side obfuscation logic.
 class UsageLimitService with ChangeNotifier {
   final AuthService _authService;
   final RemoteConfigService _remoteConfigService;
-  final FirebaseDatabase _database = FirebaseDatabase.instance;
+  final FirebaseDatabase _database;
 
   User? _currentUser;
   int _dailyMessageCount = 0;
-  int _dailyMessageLimit = 20; // 預設值，主要用於UI顯示和客戶端預檢
+  int _dailyMessageLimit = 20; // Default value, mainly for UI display and client-side pre-check
   int _dailyImageCount = 0; // --- ADDED ---
   int _dailyImageLimit = 10;   // --- ADDED ---
   bool _isInitialized = false;
@@ -37,15 +38,30 @@ class UsageLimitService with ChangeNotifier {
   int get dailyImageLimit => _dailyImageLimit; // --- ADDED ---
   bool get isInitialized => _isInitialized;
 
+  // Public constructor for app use
   UsageLimitService({
     required AuthService authService,
     required RemoteConfigService remoteConfigService,
+  }) : this.internal(
+          authService: authService,
+          remoteConfigService: remoteConfigService,
+          database: FirebaseDatabase.instance,
+        );
+
+  // Internal constructor for testing purposes
+  @visibleForTesting
+  UsageLimitService.internal({
+    required AuthService authService,
+    required RemoteConfigService remoteConfigService,
+    required FirebaseDatabase database,
   })  : _authService = authService,
-        _remoteConfigService = remoteConfigService {
+        _remoteConfigService = remoteConfigService,
+        _database = database {
     initialize();
   }
 
-  /// 初始化服務，主動獲取用戶狀態，並監聽後續變化。
+
+  /// Initializes the service, proactively fetches user status, and listens for subsequent changes.
   void initialize() {
     _dailyMessageLimit = _remoteConfigService.aiDailyMessageLimitLevel1;
     _dailyImageLimit = _remoteConfigService.aiDailyImageLimitLevel1; // --- ADDED ---
@@ -96,7 +112,7 @@ class UsageLimitService with ChangeNotifier {
     notifyListeners();
   }
 
-  /// 核心安全執行器：在執行敏感操作前，透過客戶端預檢和後端原子性事務來安全地增加計數器。
+  /// Core secure executor: Safely increments the counter through client-side pre-check and backend atomic transaction before executing a sensitive operation.
   Future<void> runProtectedAiAction(Future<void> Function() aiAction) async {
     if (!_isInitialized || _currentUser == null) {
       throw UsageLimitException("用量服務尚未就緒，請登入後再試。");
@@ -107,6 +123,12 @@ class UsageLimitService with ChangeNotifier {
       if (!_isMessageAllowedToProceed()) { 
         throw UsageLimitException("訊息已達今日上限。");
       }
+    }
+
+    try {
+      await aiAction();
+    } catch (e) {
+      rethrow;
     }
 
     final utcDayInfo = _getUtcPlus8DayInfo();
@@ -125,7 +147,7 @@ class UsageLimitService with ChangeNotifier {
         data['count'] = (data['count'] as int? ?? 0) + 1;
       } else {
         data['count'] = 1;
-        // data['image_count'] = 0;
+        data['image_count'] = 0;
         data['dateString'] = todayDateString;
         data['dayTimestamp'] = todayTimestamp;
       }
@@ -136,7 +158,6 @@ class UsageLimitService with ChangeNotifier {
       final data = Map<String, dynamic>.from(result.snapshot!.value as Map);
       _dailyMessageCount = data['count'] as int;
       notifyListeners();
-      await aiAction();
     } else {
       await _syncInitialCount(_currentUser!.uid);
       throw UsageLimitException("已達今日上限，請明天再試。");
@@ -144,7 +165,7 @@ class UsageLimitService with ChangeNotifier {
   }
 
   // --- MODIFICATION START: Logic changed to increment count AFTER action ---
-  /// 為圖片生成操作設計的獨立安全執行器。
+  /// A separate secure executor for image generation operations.
   Future<void> runProtectedImageAction(Future<void> Function() imageAction) async {
     if (!_isInitialized || _currentUser == null) {
       throw UsageLimitException("用量服務尚未就緒，請登入後再試。");
@@ -181,7 +202,7 @@ class UsageLimitService with ChangeNotifier {
       } else {
         // This is the first image generation of the new day.
         // Per RTDB rule (A-2), we must reset both counters.
-        // data['count'] = 0;
+        data['count'] = 0;
         data['image_count'] = 1;
         data['dateString'] = todayDateString;
         data['dayTimestamp'] = todayTimestamp;

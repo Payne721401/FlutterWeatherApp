@@ -449,6 +449,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "12.0.3"
+  firebase_database_mocks:
+    dependency: "direct main"
+    description:
+      name: firebase_database_mocks
+      sha256: e95b3b2b9cd03999cddbccdc6b19c11fbf947b85b8a6c8175d3dcfcefbe70997
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.8.1"
   firebase_database_platform_interface:
     dependency: transitive
     description:

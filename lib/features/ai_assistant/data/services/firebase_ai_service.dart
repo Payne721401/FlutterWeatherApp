@@ -55,6 +55,7 @@ class FirebaseAiService implements AiAssistantService {
 
     final googleAI = FirebaseAI.googleAI(
       auth: FirebaseAuth.instance,
+      // appCheck: FirebaseAppCheck.instance
     );
 
     _model = googleAI.generativeModel(

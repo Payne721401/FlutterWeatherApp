@@ -142,11 +142,13 @@ void main() async {
   
   if (!kIsWeb) {
     // 【新增】初始化 Firebase App Check
+    // --- MODIFICATION START: Use latest App Check syntax ---
     await FirebaseAppCheck.instance.activate(
-      webProvider: null,
-      androidProvider: kDebugMode ? AndroidProvider.debug : AndroidProvider.playIntegrity,
-      appleProvider: kDebugMode ? AppleProvider.debug : AppleProvider.appAttest,
+      providerWeb: null,
+      providerAndroid: kDebugMode ? const AndroidDebugProvider() : const AndroidPlayIntegrityProvider(),
+      providerApple: kDebugMode ? const AppleDebugProvider() : const AppleAppAttestProvider(),
     );
+    // --- MODIFICATION END ---
   }
   
   // 【保留】使用您原始的正確函數名稱
@@ -368,6 +370,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _showAnnouncementDialog(Announcement announcement) async {
+    // --- MODIFICATION START: Add mounted check ---
     if (mounted) {
       showCupertinoDialog(
         context: context,
@@ -376,6 +379,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
         },
       );
     }
+    // --- MODIFICATION END ---
   }
 
   void _onItemTapped(int index) {

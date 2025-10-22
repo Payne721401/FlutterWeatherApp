@@ -7,14 +7,10 @@ import 'package:weatherpro/background_tasks/evening_forecast_task_handler.dart';
 import 'package:weatherpro/features/settings/domain/repositories/notification_settings_repository.dart';
 import 'package:weatherpro/features/weather/data/models/ui_weather_forecast.dart';
 import 'package:weatherpro/features/weather/domain/repositories/weather_forecast_repository.dart';
-import 'package:weatherpro/services/location_service.dart';
 import 'package:weatherpro/services/notification_service.dart';
-import 'package:geolocator/geolocator.dart';
 
-// The import for the generated mocks file MUST come after all other imports and declarations.
 @GenerateMocks([
   NotificationService,
-  LocationService,
   WeatherForecastRepository,
   SharedPreferences,
 ])
@@ -22,20 +18,17 @@ import 'evening_forecast_task_handler_test.mocks.dart';
 
 void main() {
   late MockNotificationService mockNotificationService;
-  late MockLocationService mockLocationService;
   late MockWeatherForecastRepository mockWeatherRepo;
   late MockSharedPreferences mockPrefs;
   late EveningForecastTaskHandler taskHandler;
 
   setUp(() {
     mockNotificationService = MockNotificationService();
-    mockLocationService = MockLocationService();
     mockWeatherRepo = MockWeatherForecastRepository();
     mockPrefs = MockSharedPreferences();
 
     taskHandler = EveningForecastTaskHandler.testable(
       notificationService: mockNotificationService,
-      locationService: mockLocationService,
       weatherRepo: mockWeatherRepo,
       prefsForTesting: mockPrefs,
     );
@@ -43,11 +36,6 @@ void main() {
     when(mockNotificationService.init()).thenAnswer((_) async => {});
   });
 
-  final testPosition = Position(
-    latitude: 25.034, longitude: 121.564, timestamp: DateTime.now(),
-    accuracy: 0.0, altitude: 0.0, altitudeAccuracy: 0.0, heading: 0.0,
-    headingAccuracy: 0.0, speed: 0.0, speedAccuracy: 0.0,
-  );
   const testAdminDivision = '臺北市 信義區';
   const testLocationId = '臺北市_信義區';
 
@@ -58,16 +46,14 @@ void main() {
           .thenReturn(false);
       final result = await taskHandler.execute();
       expect(result, isTrue);
-      verifyNever(mockLocationService.getCurrentLocation());
       verifyNever(mockWeatherRepo.getForecastData(any));
     });
 
     test('execute should send notification on success', () async {
       when(mockPrefs.getBool(NotificationSettingsRepository.eveningForecastEnabledKey))
           .thenReturn(true);
-      when(mockLocationService.getCurrentLocation()).thenAnswer((_) async => testPosition);
-      when(mockLocationService.getAdministrativeDivision(any, any))
-          .thenAnswer((_) async => testAdminDivision);
+      when(mockPrefs.getString('last_known_admin_division'))
+          .thenReturn(testAdminDivision);
       
       final tomorrow = DateUtils.dateOnly(DateTime.now().add(const Duration(days: 1)));
       
@@ -99,9 +85,8 @@ void main() {
     test('execute should return true if no forecast for tomorrow is available', () async {
         when(mockPrefs.getBool(NotificationSettingsRepository.eveningForecastEnabledKey))
             .thenReturn(true);
-        when(mockLocationService.getCurrentLocation()).thenAnswer((_) async => testPosition);
-        when(mockLocationService.getAdministrativeDivision(any, any))
-            .thenAnswer((_) async => testAdminDivision);
+        when(mockPrefs.getString('last_known_admin_division'))
+            .thenReturn(testAdminDivision);
 
         final twoDaysLater = DateUtils.dateOnly(DateTime.now().add(const Duration(days: 2)));
         
@@ -123,28 +108,23 @@ void main() {
             id: anyNamed('id'), title: anyNamed('title'), body: anyNamed('body'), payload: anyNamed('payload')));
     });
 
-     test('execute should return true if location cannot be determined', () async {
+    test('execute should return true when no location is saved', () async {
       when(mockPrefs.getBool(NotificationSettingsRepository.eveningForecastEnabledKey))
           .thenReturn(true);
-      when(mockLocationService.getCurrentLocation()).thenAnswer((_) async => testPosition);
-      when(mockLocationService.getAdministrativeDivision(any, any))
-          .thenAnswer((_) async => null);
+      when(mockPrefs.getString('last_known_admin_division')).thenReturn(null);
       
       final result = await taskHandler.execute();
 
       expect(result, isTrue);
-      
-      // --- MODIFICATION START ---
-      // This essential verification is now restored.
-      // It ensures that we exited early BEFORE calling the weather repository.
       verifyNever(mockWeatherRepo.getForecastData(any));
-      // --- MODIFICATION END ---
     });
 
-    test('execute should return false when getting location fails', () async {
+    test('execute should return false when weather repository throws', () async {
       when(mockPrefs.getBool(NotificationSettingsRepository.eveningForecastEnabledKey))
           .thenReturn(true);
-      when(mockLocationService.getCurrentLocation()).thenThrow(Exception('Location permission denied'));
+      when(mockPrefs.getString('last_known_admin_division'))
+          .thenReturn(testAdminDivision);
+      when(mockWeatherRepo.getForecastData(testLocationId)).thenThrow(Exception('Network Error'));
 
       final result = await taskHandler.execute();
 

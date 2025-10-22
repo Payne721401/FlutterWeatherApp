@@ -3,6 +3,7 @@ import 'dart:convert'; // --- ADDED for jsonEncode
 import 'dart:developer';
 import 'dart:io';
 import 'dart:typed_data'; // --- ADDED ---
+import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -121,7 +122,7 @@ class AiAssistantCubit extends Cubit<AiAssistantState> {
       await _aiAssistantService.initialize();
       // --- MODIFICATION END ---
 
-      /* --- OLD CODE (Commented Out) ---
+      /* --- OLD CODE (Commented Out) --
       // 原因: 這整段 Firebase 物件的初始化邏輯，已完整搬移至 FirebaseAiService
       final systemPrompt = await rootBundle.loadString(
         'lib/features/ai_assistant/assets/prompts/weather_assistant_system_prompt.md',
@@ -293,6 +294,23 @@ class AiAssistantCubit extends Cubit<AiAssistantState> {
       // MODIFICATION: Simplified error handling by removing nested try-catch.
       await _usageLimitService.runProtectedImageAction(() async {
         
+        // --- GA LOG EVENT START ---
+        final analyticsParameters = {
+          'scene': state.customScene.isNotEmpty ? state.customScene : state.selectedScene,
+          'style': state.customStyle.isNotEmpty ? state.customStyle : state.selectedStyle,
+          'gender': state.selectedGender,
+          'age': state.userAge,
+          'body_type': state.selectedBodyType,
+          'fit_preference': state.selectedFitPreference,
+          'temp_preference': state.selectedTempPreference,
+        };
+        analyticsParameters.removeWhere((key, value) => value == null || value.isEmpty);
+        FirebaseAnalytics.instance.logEvent(
+          name: 'ai_outfit_generate',
+          parameters: analyticsParameters.map((key, value) => MapEntry(key, value.toString())),
+        );
+        // --- GA LOG EVENT END ---
+
         // --- MINIMAL MODIFICATION START ---
         // Combine the system prompt from the service with the user-specific data.
         final systemPrompt = _aiAssistantService.outfitSystemPrompt;
@@ -339,6 +357,19 @@ class AiAssistantCubit extends Cubit<AiAssistantState> {
   // --- MODIFICATION END ---
 
   Future<void> sendMessage(String messageText) async {
+    
+    // --- GA LOG EVENT START ---
+    final isQuickReply = _quickQuestions.contains(messageText);
+    FirebaseAnalytics.instance.logEvent(
+      name: 'ai_chat_query',
+      parameters: {
+        'query_text': messageText.length > 100 ? messageText.substring(0, 100) : messageText,
+        'query_length': messageText.length,
+        'source': isQuickReply ? 'quick_reply' : 'manual_input',
+      },
+    );
+    // --- GA LOG EVENT END ---
+
     emit(state.copyWith(quickReplies: []));
 
     // --- MODIFICATION START ---
@@ -466,8 +497,8 @@ class AiAssistantCubit extends Cubit<AiAssistantState> {
           error: e.toString(),
         ),
       );
-    } catch (e) {
-      log('AI chat general error: ${e.toString()}');
+    } catch (e, s) { // <-- 在 catch 中增加 ", s"
+      log('AI chat error. Type: ${e.runtimeType.toString()}', error: e, stackTrace: s);
       const errorMessage = '抱歉，目前無法連線至服務，請稍後再試。';
 
       final updatedMessages = List<MessageData>.from(state.messages);

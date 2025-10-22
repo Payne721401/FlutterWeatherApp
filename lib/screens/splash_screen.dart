@@ -9,6 +9,11 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:weatherpro/features/weather/presentation/state/weather_data_state.dart';
 import '../services/auth_service.dart';
 import '../widgets/animated_logo.dart';
+// --- MODIFICATION START ---
+import '../services/app_version_service.dart';
+import '../services/remote_config_service.dart';
+import '../widgets/app_dialogs.dart';
+// --- MODIFICATION END ---
 
 // This function ONLY handles navigation now.
 Future<void> _navigateToHome(BuildContext context) async {
@@ -278,9 +283,29 @@ class _NavigateToHomeState extends State<_NavigateToHome> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _handlePermissionsAndLoadData();
+      _checkVersionAndNavigate();
     });
   }
+  
+  // --- MODIFICATION START: Added version check logic ---
+  Future<void> _checkVersionAndNavigate() async {
+    // Ensure the widget is still mounted before proceeding.
+    if (!mounted) return;
+
+    final appVersionService = context.read<AppVersionService>();
+    final remoteConfigService = context.read<RemoteConfigService>();
+
+    // Check if an update is required.
+    if (appVersionService.isUpdateRequired(remoteConfigService)) {
+      // If an update is required, show the update dialog.
+      // The dialog is non-dismissible, so the user has to close the app.
+      await showUpdateDialog(context);
+    } else {
+      // If no update is required, proceed with the normal startup flow.
+      await _handlePermissionsAndLoadData();
+    }
+  }
+  // --- MODIFICATION END ---
   
   Future<void> _handlePermissionsAndLoadData() async {
     if (kIsWeb) {
@@ -332,8 +357,43 @@ class _NavigateToHomeState extends State<_NavigateToHome> {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(child: CircularProgressIndicator()),
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFFf8fafc), Color(0xFFe2e8f0)],
+        ),
+      ),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const AnimatedLogo(size: 150),
+            const SizedBox(height: 24),
+            Text(
+              '台灣AI天氣通',
+              style: GoogleFonts.notoSansTc(
+                fontSize: 28,
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFF0f172a),
+              ),
+            ),
+            const SizedBox(height: 40),
+            const CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF475569)),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              '天氣小幫手讀取資料中',
+              style: GoogleFonts.notoSansTc(
+                fontSize: 14,
+                color: const Color(0xFF475569),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
