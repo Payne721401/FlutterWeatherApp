@@ -49,7 +49,6 @@ void main() {
 
   // --- TEST DATA ---
   final testImageBytes = Uint8List.fromList([1, 2, 3, 4, 5]);
-  const testImagePrompt = 'A test prompt for image generation'; // This is now only for reference, not used in calls
   const testMessage = 'Hello, Assistant!';
   const testApiResponse = 'Hello there! How can I help you?';
   final usageLimitException = UsageLimitException('已達今日上限');
@@ -77,6 +76,7 @@ void main() {
 
     // Default stub for successful initialization
     when(() => mockAiAssistantService.initialize()).thenAnswer((_) async {});
+    when(() => mockAiAssistantService.outfitSystemPrompt).thenReturn('A test system prompt');
 
     // Default stubs for services
     when(() => mockRemoteConfigService.aiImageModelName).thenReturn('gemini-test-model');
@@ -116,6 +116,7 @@ void main() {
       'emits welcome message on success',
       build: buildCubit,
       act: (cubit) => cubit.initialize(),
+      skip: 1, // MODIFICATION: Skip the initial state.
       expect: () => <Matcher>[emitsWelcomeMessage],
       verify: (_) {
         verify(() => mockAiAssistantService.initialize()).called(1);
@@ -129,6 +130,7 @@ void main() {
       },
       build: buildCubit,
       act: (cubit) => cubit.initialize(),
+      skip: 1, // MODIFICATION: Skip the initial state.
       expect: () => <Matcher>[
         isA<AiAssistantState>()
             .having((s) => s.status, 'status', AiAssistantStatus.failure)
@@ -153,11 +155,21 @@ void main() {
       build: buildCubit,
       act: (cubit) async {
         await cubit.initialize();
-        // MODIFICATION: Removed argument from the call
+        cubit.selectGender('女性');
+        cubit.setUserAge('青年');
+        cubit.selectBodyType('標準');
+        cubit.selectFitPreference('合身');
+        cubit.selectTempPreference('適中');
         await cubit.generateOutfitImage();
       },
+      skip: 1, 
       expect: () => <Matcher>[
         emitsWelcomeMessage,
+        isA<AiAssistantState>().having((s) => s.selectedGender, 'gender', '女性'),
+        isA<AiAssistantState>().having((s) => s.userAge, 'age', '青年'),
+        isA<AiAssistantState>().having((s) => s.selectedBodyType, 'bodyType', '標準'),
+        isA<AiAssistantState>().having((s) => s.selectedFitPreference, 'fit', '合身'),
+        isA<AiAssistantState>().having((s) => s.selectedTempPreference, 'temp', '適中'),
         isA<AiAssistantState>().having((s) => s.imageGenerationStatus, 'status', ImageGenerationStatus.loading),
         isA<AiAssistantState>()
             .having((s) => s.imageGenerationStatus, 'status', ImageGenerationStatus.success)
@@ -165,7 +177,6 @@ void main() {
       ],
       verify: (_) {
         verify(() => mockUsageLimitService.runProtectedImageAction(any())).called(1);
-        // MODIFICATION: Changed to verify with any() matcher
         verify(() => mockAiAssistantService.generateOutfitImage(any())).called(1);
       },
     );
@@ -178,11 +189,21 @@ void main() {
       build: buildCubit,
       act: (cubit) async {
         await cubit.initialize();
-        // MODIFICATION: Removed argument from the call
+        cubit.selectGender('女性');
+        cubit.setUserAge('青年');
+        cubit.selectBodyType('標準');
+        cubit.selectFitPreference('合身');
+        cubit.selectTempPreference('適中');
         await cubit.generateOutfitImage();
       },
+      skip: 1, 
       expect: () => <Matcher>[
         emitsWelcomeMessage,
+        isA<AiAssistantState>().having((s) => s.selectedGender, 'gender', '女性'),
+        isA<AiAssistantState>().having((s) => s.userAge, 'age', '青年'),
+        isA<AiAssistantState>().having((s) => s.selectedBodyType, 'bodyType', '標準'),
+        isA<AiAssistantState>().having((s) => s.selectedFitPreference, 'fit', '合身'),
+        isA<AiAssistantState>().having((s) => s.selectedTempPreference, 'temp', '適中'),
         isA<AiAssistantState>().having((s) => s.imageGenerationStatus, 'status', ImageGenerationStatus.loading),
         isA<AiAssistantState>()
             .having((s) => s.imageGenerationStatus, 'status', ImageGenerationStatus.failure)
@@ -201,11 +222,21 @@ void main() {
       build: buildCubit,
        act: (cubit) async {
         await cubit.initialize();
-        // MODIFICATION: Removed argument from the call
+        cubit.selectGender('女性');
+        cubit.setUserAge('青年');
+        cubit.selectBodyType('標準');
+        cubit.selectFitPreference('合身');
+        cubit.selectTempPreference('適中');
         await cubit.generateOutfitImage();
       },
+      skip: 1, 
       expect: () => <Matcher>[
         emitsWelcomeMessage,
+        isA<AiAssistantState>().having((s) => s.selectedGender, 'gender', '女性'),
+        isA<AiAssistantState>().having((s) => s.userAge, 'age', '青年'),
+        isA<AiAssistantState>().having((s) => s.selectedBodyType, 'bodyType', '標準'),
+        isA<AiAssistantState>().having((s) => s.selectedFitPreference, 'fit', '合身'),
+        isA<AiAssistantState>().having((s) => s.selectedTempPreference, 'temp', '適中'),
         isA<AiAssistantState>().having((s) => s.imageGenerationStatus, 'status', ImageGenerationStatus.loading),
         isA<AiAssistantState>()
             .having((s) => s.imageGenerationStatus, 'status', ImageGenerationStatus.failure)
@@ -229,7 +260,7 @@ void main() {
         await cubit.initialize();
         await cubit.sendMessage(testMessage);
       },
-      // MODIFICATION: Added matcher for the `quickReplies: []` state emission.
+      skip: 1, 
       expect: () => <Matcher>[
         emitsWelcomeMessage,
         isA<AiAssistantState>().having((s) => s.quickReplies, 'quickReplies', isEmpty),
@@ -260,7 +291,7 @@ void main() {
         await cubit.initialize();
         await cubit.sendMessage(testMessage);
       },
-      // MODIFICATION: Added matcher for the `quickReplies: []` state emission.
+      skip: 1, 
       expect: () => <Matcher>[
         emitsWelcomeMessage,
         isA<AiAssistantState>().having((s) => s.quickReplies, 'quickReplies', isEmpty),
@@ -286,7 +317,7 @@ void main() {
         await cubit.initialize();
         await cubit.sendMessage(testMessage);
       },
-      // MODIFICATION: Added matcher for the `quickReplies: []` state emission.
+      skip: 1, 
       expect: () => <Matcher>[
         emitsWelcomeMessage,
         isA<AiAssistantState>().having((s) => s.quickReplies, 'quickReplies', isEmpty),

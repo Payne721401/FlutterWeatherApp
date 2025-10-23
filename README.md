@@ -1,4 +1,4 @@
-# My Flutter Weather & AI Assistant App
+# Flutter Weather & AI Assistant App
 
 ## Project Overview
 

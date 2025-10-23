@@ -64,22 +64,20 @@ void main() {
       // Given: Alerts are enabled
       when(mockPrefs.getBool(NotificationSettingsRepository.weatherAlertsEnabledKey))
           .thenReturn(true);
-      // Given: The last notified alert title is different from the new one
-      when(mockPrefs.getString('lastNotifiedAlertTitle')).thenReturn('Old Alert Title');
+      // Given: The last notified alert timestamp is older than the new alert's timestamp
+      final olderTimestamp = DateTime.now().subtract(const Duration(hours: 1)).millisecondsSinceEpoch;
+      when(mockPrefs.getInt('lastNotifiedAlertTimestamp')).thenReturn(olderTimestamp);
       
-      // *** MODIFICATION START ***
-      // Correctly instantiate WeatherAlert with the right parameters
       final newAlert = WeatherAlert(
         title: 'New Alert Title',
         description: 'This is a new alert.',
         issuedTime: DateTime.now(),
         authorName: 'CWA',
       );
-      // *** MODIFICATION END ***
 
       when(mockAlertRepo.fetchAlerts()).thenAnswer((_) async => [newAlert]);
-      // Given: SharedPreferences setString returns successfully
-      when(mockPrefs.setString(any, any)).thenAnswer((_) async => true);
+      // Given: SharedPreferences setInt returns successfully
+      when(mockPrefs.setInt(any, any)).thenAnswer((_) async => true);
 
       // When: The task is executed
       final result = await taskHandler.execute();
@@ -95,8 +93,8 @@ void main() {
         body: newAlert.description,
         payload: 'weather_alert_payload',
       )).called(1);
-      // Then: The new alert title is saved to SharedPreferences
-      verify(mockPrefs.setString('lastNotifiedAlertTitle', newAlert.title)).called(1);
+      // Then: The new alert timestamp is saved to SharedPreferences
+      verify(mockPrefs.setInt('lastNotifiedAlertTimestamp', newAlert.issuedTime.millisecondsSinceEpoch)).called(1);
     });
 
     // Test Case 3: No new alert found, no notification should be sent
@@ -104,18 +102,16 @@ void main() {
       // Given: Alerts are enabled
       when(mockPrefs.getBool(NotificationSettingsRepository.weatherAlertsEnabledKey))
           .thenReturn(true);
-      // Given: The last notified alert title is the same as the fetched one
-      const sameAlertTitle = 'Same Alert Title';
-      when(mockPrefs.getString('lastNotifiedAlertTitle')).thenReturn(sameAlertTitle);
+      // Given: The last notified alert timestamp is the same as the fetched one
+      final sameTime = DateTime.now();
+      when(mockPrefs.getInt('lastNotifiedAlertTimestamp')).thenReturn(sameTime.millisecondsSinceEpoch);
 
-      // *** MODIFICATION START ***
       final oldAlert = WeatherAlert(
-        title: sameAlertTitle,
+        title: 'Old Alert Title',
         description: 'This is the same alert.',
-        issuedTime: DateTime.now(),
+        issuedTime: sameTime, // Same timestamp as last notified
         authorName: 'CWA',
       );
-      // *** MODIFICATION END ***
       
       when(mockAlertRepo.fetchAlerts()).thenAnswer((_) async => [oldAlert]);
 
@@ -131,8 +127,8 @@ void main() {
         body: anyNamed('body'),
         payload: anyNamed('payload'),
       ));
-      // Then: setString is not called as the title is the same
-      verifyNever(mockPrefs.setString(any, any));
+      // Then: setInt is not called as the timestamp is not newer
+      verifyNever(mockPrefs.setInt(any, any));
     });
 
     // Test Case 4: External service fails

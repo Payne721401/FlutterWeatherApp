@@ -3,17 +3,15 @@
 // Do not manually edit this file.
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
-import 'dart:async' as _i4;
+import 'dart:async' as _i3;
 
 import 'package:flutter_local_notifications/flutter_local_notifications.dart'
-    as _i5;
-import 'package:geolocator/geolocator.dart' as _i2;
+    as _i4;
 import 'package:mockito/mockito.dart' as _i1;
-import 'package:shared_preferences/shared_preferences.dart' as _i8;
+import 'package:shared_preferences/shared_preferences.dart' as _i6;
 import 'package:weatherpro/features/weather/domain/repositories/weather_forecast_repository.dart'
-    as _i7;
-import 'package:weatherpro/services/location_service.dart' as _i6;
-import 'package:weatherpro/services/notification_service.dart' as _i3;
+    as _i5;
+import 'package:weatherpro/services/notification_service.dart' as _i2;
 
 // ignore_for_file: type=lint
 // ignore_for_file: avoid_redundant_argument_values
@@ -30,31 +28,26 @@ import 'package:weatherpro/services/notification_service.dart' as _i3;
 // ignore_for_file: subtype_of_sealed_class
 // ignore_for_file: invalid_use_of_internal_member
 
-class _FakePosition_0 extends _i1.SmartFake implements _i2.Position {
-  _FakePosition_0(Object parent, Invocation parentInvocation)
-    : super(parent, parentInvocation);
-}
-
 /// A class which mocks [NotificationService].
 ///
 /// See the documentation for Mockito's code generation for more information.
 class MockNotificationService extends _i1.Mock
-    implements _i3.NotificationService {
+    implements _i2.NotificationService {
   MockNotificationService() {
     _i1.throwOnMissingStub(this);
   }
 
   @override
-  _i4.Future<void> init() =>
+  _i3.Future<void> init() =>
       (super.noSuchMethod(
             Invocation.method(#init, []),
-            returnValue: _i4.Future<void>.value(),
-            returnValueForMissingStub: _i4.Future<void>.value(),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
           )
-          as _i4.Future<void>);
+          as _i3.Future<void>);
 
   @override
-  _i4.Future<void> showNotification({
+  _i3.Future<void> showNotification({
     required int? id,
     required String? title,
     required String? body,
@@ -67,13 +60,13 @@ class MockNotificationService extends _i1.Mock
               #body: body,
               #payload: payload,
             }),
-            returnValue: _i4.Future<void>.value(),
-            returnValueForMissingStub: _i4.Future<void>.value(),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
           )
-          as _i4.Future<void>);
+          as _i3.Future<void>);
 
   @override
-  _i4.Future<void> scheduleDailyNotification({
+  _i3.Future<void> scheduleDailyNotification({
     required int? id,
     required String? title,
     required String? body,
@@ -83,8 +76,8 @@ class MockNotificationService extends _i1.Mock
     String? channelId = 'daily_weather_channel',
     String? channelName = '每日天氣提醒',
     String? channelDescription = '每日定時提供天氣相關提醒',
-    _i5.Importance? importance = _i5.Importance.low,
-    _i5.Priority? priority = _i5.Priority.low,
+    _i4.Importance? importance = _i4.Importance.low,
+    _i4.Priority? priority = _i4.Priority.low,
   }) =>
       (super.noSuchMethod(
             Invocation.method(#scheduleDailyNotification, [], {
@@ -100,65 +93,32 @@ class MockNotificationService extends _i1.Mock
               #importance: importance,
               #priority: priority,
             }),
-            returnValue: _i4.Future<void>.value(),
-            returnValueForMissingStub: _i4.Future<void>.value(),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
           )
-          as _i4.Future<void>);
+          as _i3.Future<void>);
 
   @override
-  _i4.Future<void> cancelNotification(int? id) =>
+  _i3.Future<void> cancelNotification(int? id) =>
       (super.noSuchMethod(
             Invocation.method(#cancelNotification, [id]),
-            returnValue: _i4.Future<void>.value(),
-            returnValueForMissingStub: _i4.Future<void>.value(),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
           )
-          as _i4.Future<void>);
-}
-
-/// A class which mocks [LocationService].
-///
-/// See the documentation for Mockito's code generation for more information.
-class MockLocationService extends _i1.Mock implements _i6.LocationService {
-  MockLocationService() {
-    _i1.throwOnMissingStub(this);
-  }
-
-  @override
-  _i4.Future<_i2.Position> getCurrentLocation() =>
-      (super.noSuchMethod(
-            Invocation.method(#getCurrentLocation, []),
-            returnValue: _i4.Future<_i2.Position>.value(
-              _FakePosition_0(this, Invocation.method(#getCurrentLocation, [])),
-            ),
-          )
-          as _i4.Future<_i2.Position>);
-
-  @override
-  _i4.Future<String?> getAdministrativeDivision(
-    double? latitude,
-    double? longitude,
-  ) =>
-      (super.noSuchMethod(
-            Invocation.method(#getAdministrativeDivision, [
-              latitude,
-              longitude,
-            ]),
-            returnValue: _i4.Future<String?>.value(),
-          )
-          as _i4.Future<String?>);
+          as _i3.Future<void>);
 }
 
 /// A class which mocks [WeatherForecastRepository].
 ///
 /// See the documentation for Mockito's code generation for more information.
 class MockWeatherForecastRepository extends _i1.Mock
-    implements _i7.WeatherForecastRepository {
+    implements _i5.WeatherForecastRepository {
   MockWeatherForecastRepository() {
     _i1.throwOnMissingStub(this);
   }
 
   @override
-  _i4.Future<_i7.UIWeatherDataBundle?> getForecastData(
+  _i3.Future<_i5.UIWeatherDataBundle?> getForecastData(
     String? locationId, {
     bool? forceRefresh = false,
   }) =>
@@ -168,15 +128,15 @@ class MockWeatherForecastRepository extends _i1.Mock
               [locationId],
               {#forceRefresh: forceRefresh},
             ),
-            returnValue: _i4.Future<_i7.UIWeatherDataBundle?>.value(),
+            returnValue: _i3.Future<_i5.UIWeatherDataBundle?>.value(),
           )
-          as _i4.Future<_i7.UIWeatherDataBundle?>);
+          as _i3.Future<_i5.UIWeatherDataBundle?>);
 }
 
 /// A class which mocks [SharedPreferences].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockSharedPreferences extends _i1.Mock implements _i8.SharedPreferences {
+class MockSharedPreferences extends _i1.Mock implements _i6.SharedPreferences {
   MockSharedPreferences() {
     _i1.throwOnMissingStub(this);
   }
@@ -223,75 +183,75 @@ class MockSharedPreferences extends _i1.Mock implements _i8.SharedPreferences {
           as List<String>?);
 
   @override
-  _i4.Future<bool> setBool(String? key, bool? value) =>
+  _i3.Future<bool> setBool(String? key, bool? value) =>
       (super.noSuchMethod(
             Invocation.method(#setBool, [key, value]),
-            returnValue: _i4.Future<bool>.value(false),
+            returnValue: _i3.Future<bool>.value(false),
           )
-          as _i4.Future<bool>);
+          as _i3.Future<bool>);
 
   @override
-  _i4.Future<bool> setInt(String? key, int? value) =>
+  _i3.Future<bool> setInt(String? key, int? value) =>
       (super.noSuchMethod(
             Invocation.method(#setInt, [key, value]),
-            returnValue: _i4.Future<bool>.value(false),
+            returnValue: _i3.Future<bool>.value(false),
           )
-          as _i4.Future<bool>);
+          as _i3.Future<bool>);
 
   @override
-  _i4.Future<bool> setDouble(String? key, double? value) =>
+  _i3.Future<bool> setDouble(String? key, double? value) =>
       (super.noSuchMethod(
             Invocation.method(#setDouble, [key, value]),
-            returnValue: _i4.Future<bool>.value(false),
+            returnValue: _i3.Future<bool>.value(false),
           )
-          as _i4.Future<bool>);
+          as _i3.Future<bool>);
 
   @override
-  _i4.Future<bool> setString(String? key, String? value) =>
+  _i3.Future<bool> setString(String? key, String? value) =>
       (super.noSuchMethod(
             Invocation.method(#setString, [key, value]),
-            returnValue: _i4.Future<bool>.value(false),
+            returnValue: _i3.Future<bool>.value(false),
           )
-          as _i4.Future<bool>);
+          as _i3.Future<bool>);
 
   @override
-  _i4.Future<bool> setStringList(String? key, List<String>? value) =>
+  _i3.Future<bool> setStringList(String? key, List<String>? value) =>
       (super.noSuchMethod(
             Invocation.method(#setStringList, [key, value]),
-            returnValue: _i4.Future<bool>.value(false),
+            returnValue: _i3.Future<bool>.value(false),
           )
-          as _i4.Future<bool>);
+          as _i3.Future<bool>);
 
   @override
-  _i4.Future<bool> remove(String? key) =>
+  _i3.Future<bool> remove(String? key) =>
       (super.noSuchMethod(
             Invocation.method(#remove, [key]),
-            returnValue: _i4.Future<bool>.value(false),
+            returnValue: _i3.Future<bool>.value(false),
           )
-          as _i4.Future<bool>);
+          as _i3.Future<bool>);
 
   @override
-  _i4.Future<bool> commit() =>
+  _i3.Future<bool> commit() =>
       (super.noSuchMethod(
             Invocation.method(#commit, []),
-            returnValue: _i4.Future<bool>.value(false),
+            returnValue: _i3.Future<bool>.value(false),
           )
-          as _i4.Future<bool>);
+          as _i3.Future<bool>);
 
   @override
-  _i4.Future<bool> clear() =>
+  _i3.Future<bool> clear() =>
       (super.noSuchMethod(
             Invocation.method(#clear, []),
-            returnValue: _i4.Future<bool>.value(false),
+            returnValue: _i3.Future<bool>.value(false),
           )
-          as _i4.Future<bool>);
+          as _i3.Future<bool>);
 
   @override
-  _i4.Future<void> reload() =>
+  _i3.Future<void> reload() =>
       (super.noSuchMethod(
             Invocation.method(#reload, []),
-            returnValue: _i4.Future<void>.value(),
-            returnValueForMissingStub: _i4.Future<void>.value(),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
           )
-          as _i4.Future<void>);
+          as _i3.Future<void>);
 }

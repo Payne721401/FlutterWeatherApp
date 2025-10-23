@@ -9,6 +9,10 @@ import GoogleMobileAds  // 新增此行
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
     
+    if #available(iOS 10.0, *) {
+      UNUserNotificationCenter.current().delegate = self as? UNUserNotificationCenterDelegate
+    }
+    
     // 初始化 Google Mobile Ads SDK
     GADMobileAds.sharedInstance().start(completionHandler: nil)
     

@@ -1,7 +1,6 @@
-// 請確保這個 package 名稱和你的 MainActivity.kt 以及資料夾路徑完全一致
-package com.example.myapp
-import com.example.myapp.R
+package com.weatherpro.ai.android
 
+import com.weatherpro.ai.android.R
 import android.view.LayoutInflater
 import android.view.View
 import android.widget.Button

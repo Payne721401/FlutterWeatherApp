@@ -11,10 +11,9 @@ String generateOutfitSuggestion(double temp, double diff) {
     return '長袖';
   }
   if (temp <= 27) {
-    if (diff >= 10) return '短袖+薄外套';
-    return '短袖';
+    return '短袖+薄外套';
   }
-  // temp ≥ 28
+  // temp > 27
   if (diff >= 10) return '短袖+薄外套';
   return '短袖';
 }
@@ -61,18 +60,15 @@ String getTempDiffDescription(double tempDiff) {
 }
 
 Color getBackgroundColorForFeelsLike(double feelsLike) {
-    // MODIFIED: Unified color logic to use shade200 and adjusted colors
     if (feelsLike <= 10) {
-      return Colors.blue.shade200; // Very cold
+      return Colors.blue.shade200;
     } else if (feelsLike <= 15) {
-      return Colors.lightBlue.shade200; // Cold
-    } else if (feelsLike <= 20) {
-      return Colors.green.shade200; // Cool
-    } else if (feelsLike <= 25) {
-      return Colors.yellow.shade200; // Comfortable
-    } else if (feelsLike <= 30) {
-      return Colors.orange.shade200; // Warm
-    } else {
-      return Colors.red.shade200; // Hot
+      return Colors.lightBlue.shade200;
+    } else if (feelsLike <= 22) {
+      return Colors.green.shade200;
+    } else if (feelsLike <= 27) {
+      return Colors.yellow.shade200;
+    } else { // > 27
+      return Colors.red.shade200;
     }
   }

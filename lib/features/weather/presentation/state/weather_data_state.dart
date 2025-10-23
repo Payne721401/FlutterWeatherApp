@@ -5,6 +5,7 @@ import 'dart:async';
 import 'dart:developer';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz;
+import 'package:shared_preferences/shared_preferences.dart';
 
 // Import all necessary services and repositories
 import '../../../../services/location_service.dart';
@@ -163,6 +164,9 @@ class WeatherDataState extends ChangeNotifier {
       if (adminDivision != null) {
         _currentLocationName = adminDivision;
         _selectedLocationName = adminDivision;
+
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('last_known_admin_division', adminDivision);
 
         await _fetchAllData(
           adminDivision.replaceAll(' ', '_'),

@@ -1,8 +1,8 @@
-
 import 'dart:io' show Platform;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'dart:developer';
 
 import 'remote_config_service.dart';
 
@@ -53,6 +53,9 @@ class AppVersionService {
     } else {
       return false; // Unsupported platform
     }
+
+    // DEBUGGING: Print the values being compared
+    log('Version Check -> Current Build: $currentBuildNumber, Required Build: $minRequiredVersion', name: 'AppVersionService');
 
     return currentBuildNumber < minRequiredVersion;
   }
